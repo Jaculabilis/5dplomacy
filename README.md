@@ -66,3 +66,12 @@ rec {
 $ which dotnet
 /nix/store/87s452c8wj2zmy21q8q394f6rzf5y1br-dotnet-sdk-6.0.100/bin/dotnet
 ```
+
+So now we have our development tools (well, tool). The `dotnet --help` text tells us a few things about telemetry, so let's define a prompt so we know when we're in the nix shell and then set the telemetry opt-out.
+
+```
+shellHook = ''
+  PS1="5dplomacy:\W$ "
+'';
+DOTNET_CLI_TELEMETRY_OPTOUT = 1;
+```

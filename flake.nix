@@ -8,6 +8,10 @@
       let pkgs = nixpkgs.legacyPackages.${system};
       in rec {
         devShell = pkgs.mkShell {
+          shellHook = ''
+            PS1="5dplomacy:\W$ "
+          '';
+          DOTNET_CLI_TELEMETRY_OPTOUT = 1;
           packages = [ pkgs.dotnet-sdk ];
         };
       }
