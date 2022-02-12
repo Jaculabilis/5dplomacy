@@ -106,4 +106,13 @@ And when we run it through `dotnet`:
 stab
 ```
 
-Neat.
+Neat. VS Code doesn't seamlessly work with nix, so to get the extensions working we'll need to restart it from an existing `nix develop` shell so `dotnet` is on the path. For the integrated terminal, we can creating a profile for `nix develop` and set it as the default profile.
+
+```
+"terminal.integrated.profiles.linux": {
+    "nix develop": {
+        "path": "nix",
+        "args": ["develop"]
+    }
+}
+```

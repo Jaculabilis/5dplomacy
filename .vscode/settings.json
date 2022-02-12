@@ -1,0 +1,8 @@
+{
+    "terminal.integrated.profiles.linux": {
+        "nix develop": {
+            "path": "nix",
+            "args": ["develop"]
+        }
+    }
+}
