@@ -75,3 +75,35 @@ shellHook = ''
 '';
 DOTNET_CLI_TELEMETRY_OPTOUT = 1;
 ```
+
+Now let's start creating the project. dotnet has a lot of template options. We'll eventually want to have a web client and server, for true multiplayer, but first we want to build the core infrastructure that we can slap a server on top of. So, we're just going to make a console app for now.
+
+```
+5dplomacy$ dotnet new console -n MultiversalDiplomacy -o MultiversalDiplomacy
+```
+
+.NET 6 makes the Main() method implicit, but this program is going to become more complicated than a single Main(), so let's put the whole boilerplate back.
+
+```
+using System;
+
+namespace MultiversalDiplomacy
+{
+    internal class Program
+    {
+        static void Main(string[] args)
+        {
+            Console.WriteLine("stab");
+        }
+    }
+}
+```
+
+And when we run it through `dotnet`:
+
+```
+5dplomacy$ dotnet run --project MultiversalDiplomacy/
+stab
+```
+
+Neat.
