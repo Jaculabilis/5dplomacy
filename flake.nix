@@ -12,7 +12,7 @@
             PS1="5dplomacy:\W$ "
           '';
           DOTNET_CLI_TELEMETRY_OPTOUT = 1;
-          packages = [ pkgs.dotnet-sdk ];
+          packages = [ pkgs.dotnet-sdk pkgs.dotnetPackages.NUnit3 ];
         };
       }
     );

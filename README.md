@@ -116,3 +116,36 @@ Neat. VS Code doesn't seamlessly work with nix, so to get the extensions working
     }
 }
 ```
+
+## Comprehending all of time and space
+
+Now for the data model. The state of the world can be described in three layers, so to speak.
+
+1. The board is the same across time and multiverse. Since it consists of (i) provinces and (ii) borders connecting two provinces, we're going  to model it like a graph. However, a simple graph won't work because provinces are differently accessible to armies and fleets, and coasts are part of the same province while having distinct connectivity. Following the data model described in [godip](https://github.com/zond/godip), we will model this by subdividing provinces and making connections between those subdivisions. This will effectively create multiple distinct graphs for fleets and armies within the map, with some nodes grouped for control purposes into provinces. Since the map itself does not change across time, we can make this "layer" completely immutable and shared between turns and timelines.
+2. Since we need to preserve the state of the past in order to time travel effectively, we won't be mutating a board state. Instead, we'll use orders submitted for each turn to append a new copy of the board state. This can't be represented by a simple list, since we can have more than one timeline branch off of a particular turn, so instead we'll use something like a directed graph and create turns pointing to their immediate past.
+3. Given the map of the board and the state of all timelines, all units have a spatial location on the board and a temporal location in one of the turns. As the game progresses and timelines are extended, we'll create copies of the unit in each turn it appears in.
+
+This is going to get complicated, and we're looking forward to implementing the [Diplomacy Adjudicator Test Cases](http://web.inter.nl.net/users/L.B.Kruijswijk/), so let's also create a test project:
+
+```
+5dplomacy:5dplomacy$ dotnet new nunit --name MultiversalDiplomacyTests --output MultiversalDiplomacyTests
+```
+
+I think dotnet will fetch NUnit when it needs it, but to get it into our environment so VS Code recognizes it, we add it to the nix shell:
+
+```
+packages = [ pkgs.dotnet-sdk pkgs.dotnetPackages.NUnit3 ];
+```
+
+After writing some basic tests, we can run them with:
+
+```
+5dplomacy:5dplomacy$ dotnet test MultiversalDiplomacyTests/
+[...]
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+
+Passed!  - Failed:     0, Passed:     2, Skipped:     0, Total:     2, Duration: 29 ms - 5dplomacy/MultiversalDiplomacyTests/bin/Debug/net6.0/MultiversalDiplomacyTests.dll (net6.0)
+```
+
+Neat.
