@@ -44,12 +44,24 @@ public class Season
     /// </summary>
     private TimelineFactory Timelines { get; }
 
+    /// <summary>
+    /// Future seasons created directly from this season.
+    /// </summary>
+    public IEnumerable<Season> Futures => this.FutureList;
+    private List<Season> FutureList { get; }
+
     private Season(Season? past, int turn, int timeline, TimelineFactory factory)
     {
         this.Past = past;
         this.Turn = turn;
         this.Timeline = timeline;
         this.Timelines = factory;
+        this.FutureList = new();
+
+        if (past != null)
+        {
+            past.FutureList.Add(this);
+        }
     }
 
     /// <summary>
@@ -89,6 +101,9 @@ public class Season
 
     /// <summary>
     /// Returns whether this season is in an adjacent timeline to another season.
+    /// Seasons are considered to be in adjacent timelines if they are in the same timeline,
+    /// one is in a timeline that branched from the other's timeline, or both are in timelines
+    /// that branched from the same point.
     /// </summary>
     public bool InAdjacentTimeline(Season other)
     {
@@ -105,5 +120,56 @@ public class Season
             || otherRoot.Past?.Timeline == this.Timeline
                 // Both branched off of the same point
             || thisRoot.Past == otherRoot.Past;
+    }
+
+    /// <summary>
+    /// Returns all seasons that are adjacent to this season.
+    /// </summary>
+    public IEnumerable<Season> GetAdjacentSeasons()
+    {
+        List<Season> adjacents = new();
+
+        // The immediate past and all immediate futures are adjacent.
+        if (this.Past != null) adjacents.Add(this.Past);
+        adjacents.AddRange(this.FutureList);
+
+        // Find all adjacent timelines by finding all timelines that branched off of this season's
+        // timeline, i.e. all futures of this season's past that have different timelines. Also
+        // include any timelines that branched off of the timeline this timeline branched off from.
+        List<Season> adjacentTimelineRoots = new();
+        Season? current;
+        for (current = this;
+            current?.Past?.Timeline != null && current.Past.Timeline == current.Timeline;
+            current = current.Past)
+        {
+            adjacentTimelineRoots.AddRange(
+                current.FutureList.Where(s => s.Timeline != current.Timeline));
+        }
+
+        // At the end of the for loop, if this season is part of the first timeline, then current
+        // is the root season (current.past == null); if this season is in a branched timeline,
+        // then current is the branch timeline's root season (current.past.timeline !=
+        // current.timeline). There are co-branches if this season is in a branched timeline, since
+        // the first timeline by definition cannot have co-branches.
+        if (current?.Past != null)
+        {
+            IEnumerable<Season> cobranchRoots = current.Past.FutureList
+                .Where(s => s.Timeline != current.Timeline && s.Timeline != current.Past.Timeline);
+            adjacentTimelineRoots.AddRange(cobranchRoots);
+        }
+
+        // Walk up all alternate timelines to find seasons within one turn of this season.
+        foreach (Season timelineRoot in adjacentTimelineRoots)
+        {
+            for (Season? branchSeason = timelineRoot;
+                branchSeason != null && branchSeason.Turn <= this.Turn + 1;
+                branchSeason = branchSeason.FutureList
+                    .FirstOrDefault(s => s?.Timeline == branchSeason.Timeline, null))
+            {
+                if (branchSeason.Turn >= this.Turn - 1) adjacents.Add(branchSeason);
+            }
+        }
+
+        return adjacents;
     }
 }
