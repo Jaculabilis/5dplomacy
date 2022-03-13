@@ -11,14 +11,16 @@ public class AdjudicatorTests
     [Test]
     public void OrderValidationTest()
     {
-        IPhaseAdjudicator rubberStamp = new TestAdjudicator(orders => {
-            return orders.Select(o => o.Validate(ValidationReason.Valid));
+        IPhaseAdjudicator rubberStamp = new TestAdjudicator((world, orders) =>
+        {
+            return orders.Select(o => o.Validate(ValidationReason.Valid)).ToList();
         });
-        Power power = new Power(nameof(Power));
+        World world = World.Empty.WithPowers("Power");
+        Power power = world.GetPower("Power");
 
         Order order = new NullOrder(power);
         List<Order> orders = new List<Order> { order };
-        IEnumerable<OrderValidation> results = rubberStamp.ValidateOrders(orders);
+        IEnumerable<OrderValidation> results = rubberStamp.ValidateOrders(world, orders);
 
         Assert.That(results.Count(), Is.EqualTo(1));
         Assert.That(results.First().Order, Is.EqualTo(order));

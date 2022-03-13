@@ -1,4 +1,3 @@
-using MultiversalDiplomacy.Map;
 using MultiversalDiplomacy.Model;
 
 using NUnit.Framework;
@@ -51,8 +50,14 @@ public class MapTests
     [Test]
     public void LandAndSeaBorders()
     {
-        Map map = StandardMap.Instance;
-        Assert.That(map.Land("NAF").Adjacents.Count(), Is.EqualTo(1), "Expected 1 bordering land province");
-        Assert.That(map.Water("NAF").Adjacents.Count(), Is.EqualTo(3), "Expected 3 bordering sea provinces");
+        World map = World.Empty.WithStandardMap();
+        Assert.That(
+            map.GetLand("NAF").Adjacents.Count(),
+            Is.EqualTo(1),
+            "Expected 1 bordering land province");
+        Assert.That(
+            map.GetWater("NAF").Adjacents.Count(),
+            Is.EqualTo(3),
+            "Expected 3 bordering sea provinces");
     }
 }

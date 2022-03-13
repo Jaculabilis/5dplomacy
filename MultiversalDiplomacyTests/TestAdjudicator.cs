@@ -1,18 +1,19 @@
 using MultiversalDiplomacy.Adjudicate;
+using MultiversalDiplomacy.Model;
 using MultiversalDiplomacy.Orders;
 
 namespace MultiversalDiplomacyTests;
 
 public class TestAdjudicator : IPhaseAdjudicator
 {
-    private Func<IEnumerable<Order>, IEnumerable<OrderValidation>> ValidateOrdersCallback;
+    private Func<World, List<Order>, List<OrderValidation>> ValidateOrdersCallback;
 
     public TestAdjudicator(
-        Func<IEnumerable<Order>, IEnumerable<OrderValidation>> validateOrdersCallback)
+        Func<World, List<Order>, List<OrderValidation>> validateOrdersCallback)
     {
         this.ValidateOrdersCallback = validateOrdersCallback;
     }
 
-    public IEnumerable<OrderValidation> ValidateOrders(IEnumerable<Order> orders)
-        => this.ValidateOrdersCallback.Invoke(orders);
+    public List<OrderValidation> ValidateOrders(World world, List<Order> orders)
+        => this.ValidateOrdersCallback.Invoke(world, orders);
 }
