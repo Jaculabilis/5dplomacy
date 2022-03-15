@@ -9,9 +9,11 @@ public class UnitTests
     [Test]
     public void MovementTest()
     {
-        World world = World.Empty.WithStandardMap().WithPowers("First");
-        Location Mun = world.GetLand("Mun"), Boh = world.GetLand("Boh"), Tyr = world.GetLand("Tyr");
-        Power pw1 = world.GetPower("First");
+        World world = World.WithStandardMap().WithInitialSeason();
+        Location Mun = world.GetLand("Mun"),
+            Boh = world.GetLand("Boh"),
+            Tyr = world.GetLand("Tyr");
+        Power pw1 = world.GetPower("Austria");
         Season s1 = world.Seasons.First();
         Unit u1 = Unit.Build(Mun, s1, pw1, UnitType.Army);
 

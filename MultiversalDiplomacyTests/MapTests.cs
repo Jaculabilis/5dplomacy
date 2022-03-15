@@ -50,7 +50,7 @@ public class MapTests
     [Test]
     public void LandAndSeaBorders()
     {
-        World map = World.Empty.WithStandardMap();
+        World map = World.WithStandardMap();
         Assert.That(
             map.GetLand("NAF").Adjacents.Count(),
             Is.EqualTo(1),

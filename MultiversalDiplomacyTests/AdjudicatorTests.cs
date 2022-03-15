@@ -15,8 +15,8 @@ public class AdjudicatorTests
         {
             return orders.Select(o => o.Validate(ValidationReason.Valid)).ToList();
         });
-        World world = World.Empty.WithPowers("Power");
-        Power power = world.GetPower("Power");
+        World world = World.WithStandardMap().WithInitialSeason();
+        Power power = world.GetPower("Austria");
 
         Order order = new NullOrder(power);
         List<Order> orders = new List<Order> { order };
