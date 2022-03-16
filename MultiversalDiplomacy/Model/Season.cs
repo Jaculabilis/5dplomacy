@@ -64,6 +64,11 @@ public class Season
         }
     }
 
+    public override string ToString()
+    {
+        return $"{this.Turn}:{this.Timeline}";
+    }
+
     /// <summary>
     /// Create a root season at the beginning of time.
     /// </summary>

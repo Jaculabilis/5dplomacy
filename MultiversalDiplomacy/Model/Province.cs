@@ -40,6 +40,11 @@ public class Province
         this.LocationList = new List<Location>();
     }
 
+    public override string ToString()
+    {
+        return this.Name;
+    }
+
     /// <summary>
     /// Create a new province with no supply center.
     /// </summary>

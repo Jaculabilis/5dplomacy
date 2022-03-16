@@ -39,6 +39,11 @@ public class Unit
         this.Type = type;
     }
 
+    public override string ToString()
+    {
+        return $"{this.Power} {this.Type} {this.Location.Province} {this.Season}";
+    }
+
     /// <summary>
     /// Create a new unit. No validation is performed; the adjudicator should only call this
     /// method after accepting a build order.

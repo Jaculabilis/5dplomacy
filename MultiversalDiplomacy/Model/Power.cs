@@ -14,4 +14,9 @@ public class Power
     {
         this.Name = name;
     }
+
+    public override string ToString()
+    {
+        return this.Name;
+    }
 }

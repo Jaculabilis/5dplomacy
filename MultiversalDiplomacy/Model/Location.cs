@@ -41,6 +41,13 @@ public class Location
         this.AdjacentList = new List<Location>();
     }
 
+    public override string ToString()
+    {
+        return this.Name == null
+            ? $"{this.Province.Name} ({this.Type})"
+            : $"{this.Province.Name} ({this.Type}:{this.Name}]";
+    }
+
     /// <summary>
     /// Set another location as bordering this location.
     /// </summary>
