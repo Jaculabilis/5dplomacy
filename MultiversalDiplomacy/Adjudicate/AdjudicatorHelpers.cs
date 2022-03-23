@@ -51,11 +51,12 @@ internal static class AdjudicatorHelpers
             .ToList();
         if (nonOrderTypes.Any())
         {
-            throw new ArgumentException($"Unknown order type: {nonOrderTypes.Select(t => t.FullName).First()}");
+            throw new ArgumentException(
+                $"Unknown order type: {nonOrderTypes.Select(t => t.FullName).First()}");
         }
 
         InvalidateIfNotMatching(
-            order => !validOrderTypes.Contains(order.GetType()),
+            order => validOrderTypes.Contains(order.GetType()),
             ValidationReason.InvalidOrderTypeForPhase,
             ref orders,
             ref invalidOrders);
@@ -83,7 +84,8 @@ internal static class AdjudicatorHelpers
                 RetreatOrder retreat => retreat.Power == retreat.Unit.Power,
                 SupportHoldOrder support => support.Power == support.Unit.Power,
                 SupportMoveOrder support => support.Power == support.Unit.Power,
-                // Any order not given to a unit by definition cannot be given to a unit of the wrong power
+                // Any order not given to a unit, by definition, cannot be given to a unit of the
+                // wrong power
                 _ => true,
             },
             ValidationReason.InvalidUnitForPower,

@@ -96,7 +96,7 @@ public class World
             {
                 "A" => UnitType.Army,
                 "F" => UnitType.Fleet,
-                _ => throw new ArgumentOutOfRangeException($"Unknown unit type {splits[1]}")
+                _ => throw new ApplicationException($"Unknown unit type {splits[1]}")
             };
             Location location = type == UnitType.Army
                 ? this.GetLand(splits[2])
@@ -152,14 +152,20 @@ public class World
     /// Get a province by name. Throws if the province is not found.
     /// </summary>
     private Province GetProvince(string provinceName)
+        => GetProvince(provinceName, this.Provinces);
+
+    /// <summary>
+    /// Get a province by name. Throws if the province is not found.
+    /// </summary>
+    private static Province GetProvince(string provinceName, IEnumerable<Province> provinces)
     {
         string provinceNameUpper = provinceName.ToUpperInvariant();
-        Province? foundProvince = this.Provinces.SingleOrDefault(
+        Province? foundProvince = provinces.SingleOrDefault(
             p => p != null &&
                 (p.Name.ToUpperInvariant() == provinceNameUpper
                 || p.Abbreviations.Any(a => a.ToUpperInvariant() == provinceNameUpper)),
             null);
-        if (foundProvince == null) throw new ArgumentOutOfRangeException(
+        if (foundProvince == null) throw new KeyNotFoundException(
             $"Province {provinceName} not found");
         return foundProvince;
     }
@@ -172,7 +178,7 @@ public class World
     {
         Location? foundLocation = GetProvince(provinceName).Locations.SingleOrDefault(
             l => l != null && predicate(l), null);
-        if (foundLocation == null) throw new ArgumentException(
+        if (foundLocation == null) throw new KeyNotFoundException(
             $"No such location in {provinceName}");
         return foundLocation;
     }
@@ -201,7 +207,7 @@ public class World
                 p != null
                 && (p.Name == powerName || p.Name.StartsWith(powerName)),
             null);
-        if (foundPower == null) throw new ArgumentOutOfRangeException(
+        if (foundPower == null) throw new KeyNotFoundException(
             $"Power {powerName} not found");
         return foundPower;
     }
@@ -427,15 +433,13 @@ public class World
             };
 
             // Declare some helpers for border definitions
-            Location Land(string provinceName) => standardProvinces
-                .Single(p => p.Name == provinceName || p.Abbreviations.Contains(provinceName))
+            Location Land(string provinceName) => GetProvince(provinceName, standardProvinces)
                 .Locations.Single(l => l.Type == LocationType.Land);
-            Location Water(string provinceName) => standardProvinces
-                .Single(p => p.Name == provinceName || p.Abbreviations.Contains(provinceName))
+            Location Water(string provinceName) => GetProvince(provinceName, standardProvinces)
                 .Locations.Single(l => l.Type == LocationType.Water);
-            Location Coast(string provinceName, string coastName) => standardProvinces
-                .Single(p => p.Name == provinceName || p.Abbreviations.Contains(provinceName))
-                .Locations.Single(l => l.Name == coastName || l.Abbreviation == coastName);
+            Location Coast(string provinceName, string coastName)
+                => GetProvince(provinceName, standardProvinces)
+                    .Locations.Single(l => l.Name == coastName || l.Abbreviation == coastName);
 
             Land("NAF").AddBorder(Land("TUN"));
             Water("NAF").AddBorder(Water("MAO"));
@@ -517,7 +521,165 @@ public class World
             Water("GRE").AddBorder(Water("AEG"));
             Water("GRE").AddBorder(Coast("BUL", "sc"));
 
-            // TODO
+            // RUM
+
+            // SER
+
+            // CLY
+
+            // EDI
+
+            // LVP
+
+            Land("LON").AddBorder(Land("WAL"));
+            Land("LON").AddBorder(Land("YOR"));
+            Water("LON").AddBorder(Water("ENC"));
+            Water("LON").AddBorder(Water("NTH"));
+
+            // WAL
+
+            // YOR
+
+            // BRE
+
+            // BUR
+
+            // GAS
+
+            // MAR
+
+            // PAR
+
+            // PIC
+
+            Land("BER").AddBorder(Land("PRU"));
+            Land("BER").AddBorder(Land("SIL"));
+            Land("BER").AddBorder(Land("MUN"));
+            Land("BER").AddBorder(Land("KIE"));
+            Water("BER").AddBorder(Water("KIE"));
+            Water("BER").AddBorder(Water("BAL"));
+            Water("BER").AddBorder(Water("PRU"));
+
+            Land("KIE").AddBorder(Land("BER"));
+            Land("KIE").AddBorder(Land("MUN"));
+            Land("KIE").AddBorder(Land("RUH"));
+            Land("KIE").AddBorder(Land("HOL"));
+            Land("KIE").AddBorder(Land("DEN"));
+            Water("KIE").AddBorder(Water("HOL"));
+            Water("KIE").AddBorder(Water("HEL"));
+            Water("KIE").AddBorder(Water("DEN"));
+            Water("KIE").AddBorder(Water("BAL"));
+            Water("KIE").AddBorder(Water("BER"));
+
+            Land("MUN").AddBorder(Land("BUR"));
+            Land("MUN").AddBorder(Land("RUH"));
+            Land("MUN").AddBorder(Land("KIE"));
+            Land("MUN").AddBorder(Land("BER"));
+            Land("MUN").AddBorder(Land("SIL"));
+            Land("MUN").AddBorder(Land("BOH"));
+            Land("MUN").AddBorder(Land("TYR"));
+
+            // PRU
+
+            // RUH
+
+            // SIL
+
+            // SPA
+
+            // POR
+
+            // APU
+
+            // NAP
+
+            // PIE
+
+            // ROM
+
+            // TUS
+
+            // VEN
+
+            // BEL
+
+            Land("HOL").AddBorder(Land("BEL"));
+            Land("HOL").AddBorder(Land("RUH"));
+            Land("HOL").AddBorder(Land("KIE"));
+            Water("HOL").AddBorder(Water("NTH"));
+            Water("HOL").AddBorder(Water("HEL"));
+
+            // FIN
+
+            // LVN
+
+            // MOS
+
+            // SEV
+
+            // STP
+
+            // UKR
+
+            // WAR
+
+            // DEN
+
+            // NWY
+
+            // SWE
+
+            // ANK
+
+            // ARM
+
+            // CON
+
+            // SMY
+
+            // SYR
+
+            // BAR
+
+            // ENC
+
+            // HEL
+
+            // IRS
+
+            // MAO
+
+            // NAO
+
+            Water("NTH").AddBorder(Water("NWG"));
+            Water("NTH").AddBorder(Water("NWY"));
+            Water("NTH").AddBorder(Water("SKA"));
+            Water("NTH").AddBorder(Water("DEN"));
+            Water("NTH").AddBorder(Water("HEL"));
+            Water("NTH").AddBorder(Water("HOL"));
+            Water("NTH").AddBorder(Water("BEL"));
+            Water("NTH").AddBorder(Water("ENC"));
+            Water("NTH").AddBorder(Water("LON"));
+            Water("NTH").AddBorder(Water("YOR"));
+            Water("NTH").AddBorder(Water("EDI"));
+
+            // NWS
+
+            // SKA
+
+            // BAL
+
+            // GOB
+
+            // ADS
+
+            // AEG
+
+            // BLA
+
+            // EMS
+
+            // GOL
 
             Water("IOS").AddBorder(Water("TUN"));
             Water("IOS").AddBorder(Water("TYS"));
@@ -528,7 +690,9 @@ public class World
             Water("IOS").AddBorder(Water("GRE"));
             Water("IOS").AddBorder(Water("AEG"));
 
-            // TODO
+            // TYS
+
+            // WMS
 
             return new(standardProvinces);
         }

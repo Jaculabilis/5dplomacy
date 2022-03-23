@@ -6,7 +6,7 @@ namespace MultiversalDiplomacy.Adjudicate;
 /// <summary>
 /// Adjudicator for the movement phase.
 /// </summary>
-internal class MovementPhaseAdjudicator : IPhaseAdjudicator
+public class MovementPhaseAdjudicator : IPhaseAdjudicator
 {
     public List<OrderValidation> ValidateOrders(World world, List<Order> orders)
     {
@@ -35,7 +35,7 @@ internal class MovementPhaseAdjudicator : IPhaseAdjudicator
         AdjudicatorHelpers.InvalidateWrongPower(orders, ref orders, ref validationResults);
 
         // Since all the order types in this phase are UnitOrders, downcast to get the Unit.
-        List<UnitOrder> unitOrders = orders.OfType<UnitOrder>().ToList();
+        List<UnitOrder> unitOrders = orders.Cast<UnitOrder>().ToList();
 
         // Invalidate any order given to a unit in the past.
         AdjudicatorHelpers.InvalidateIfNotMatching(
