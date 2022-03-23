@@ -89,7 +89,7 @@ internal static class AdjudicatorHelpers
                 _ => true,
             },
             ValidationReason.InvalidUnitForPower,
-            ref orders,
+            ref validOrders,
             ref invalidOrders);
     }
 }

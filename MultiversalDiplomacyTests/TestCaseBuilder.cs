@@ -24,12 +24,12 @@ public class TestCaseBuilder
         /// <summary>
         /// Define an order for an army in a province.
         /// </summary>
-        public IUnitContext Army(string provinceName);
+        public IUnitContext Army(string provinceName, string? powerName = null);
 
         /// <summary>
         /// Define an order for a fleet in a province, optionally on a specific coast.
         /// </summary>
-        public IUnitContext Fleet(string provinceName, string? coast = null);
+        public IUnitContext Fleet(string provinceName, string? coast = null, string? powerName = null);
     }
 
     /// <summary>
@@ -143,12 +143,12 @@ public class TestCaseBuilder
         /// <summary>
         /// Define an order for a new army in a province.
         /// </summary>
-        public IUnitContext Army(string provinceName);
+        public IUnitContext Army(string provinceName, string? powerName = null);
 
         /// <summary>
         /// Define an order for a new fleet in a province, optionally on a specific coast.
         /// </summary>
-        public IUnitContext Fleet(string provinceName, string? coast = null);
+        public IUnitContext Fleet(string provinceName, string? coast = null, string? powerName = null);
 
         /// <summary>
         /// Save a reference to the order just defined.
@@ -206,7 +206,7 @@ public class TestCaseBuilder
         foreach (Unit unit in this.World.Units)
         {
             if (unit.Power == power
-                && unit.Location == location
+                && unit.Location.Province == location.Province
                 && unit.Season == season)
             {
                 return unit;
@@ -239,19 +239,25 @@ public class TestCaseBuilder
         public IPowerContext this[string powerName]
             => this.Builder[powerName];
 
-        public IUnitContext Army(string provinceName)
+        public IUnitContext Army(string provinceName, string? powerName = null)
         {
+            Power power = powerName == null
+                ? this.Power
+                : this.Builder.World.GetPower(powerName);
             Location location = this.Builder.World.GetLand(provinceName);
             Unit unit = this.Builder.GetOrBuildUnit(
-                this.Power, location, this.Builder.Season, UnitType.Army);
+                power, location, this.Builder.Season, UnitType.Army);
             return new UnitContext(this, unit);
         }
 
-        public IUnitContext Fleet(string provinceName, string? coast = null)
+        public IUnitContext Fleet(string provinceName, string? coast = null, string? powerName = null)
         {
+            Power power = powerName == null
+                ? this.Power
+                : this.Builder.World.GetPower(powerName);
             Location location = this.Builder.World.GetWater(provinceName, coast);
             Unit unit = this.Builder.GetOrBuildUnit(
-                this.Power, location, this.Builder.Season, UnitType.Fleet);
+                power, location, this.Builder.Season, UnitType.Fleet);
             return new UnitContext(this, unit);
         }
     }
@@ -474,10 +480,11 @@ public class TestCaseBuilder
 
         public IPowerContext this[string powerName] => this.PowerContext[powerName];
 
-        public IUnitContext Army(string provinceName) => this.PowerContext.Army(provinceName);
+        public IUnitContext Army(string provinceName, string? powerName = null)
+            => this.PowerContext.Army(provinceName, powerName);
 
-        public IUnitContext Fleet(string provinceName, string? coast = null)
-            => this.PowerContext.Fleet(provinceName);
+        public IUnitContext Fleet(string provinceName, string? coast = null, string? powerName = null)
+            => this.PowerContext.Fleet(provinceName, coast, powerName);
 
         public IOrderDefinedContext<OrderType> GetReference(out OrderReference<OrderType> order)
         {
