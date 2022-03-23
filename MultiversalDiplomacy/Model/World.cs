@@ -441,258 +441,229 @@ public class World
                 => GetProvince(provinceName, standardProvinces)
                     .Locations.Single(l => l.Name == coastName || l.Abbreviation == coastName);
 
-            Land("NAF").AddBorder(Land("TUN"));
-            Water("NAF").AddBorder(Water("MAO"));
-            Water("NAF").AddBorder(Water("WES"));
-            Water("NAF").AddBorder(Water("TUN"));
+            static void AddBordersTo(Location location, Func<string, Location> LocationType, params string[] borders)
+            {
+                foreach (string bordering in borders)
+                {
+                    location.AddBorder(LocationType(bordering));
+                }
+            }
+            void AddBorders(string provinceName, Func<string, Location> LocationType, params string[] borders)
+                => AddBordersTo(LocationType(provinceName), LocationType, borders);
 
-            Land("TUN").AddBorder(Land("NAF"));
-            Water("TUN").AddBorder(Water("NAF"));
-            Water("TUN").AddBorder(Water("WES"));
-            Water("TUN").AddBorder(Water("TYS"));
-            Water("TUN").AddBorder(Water("ION"));
+            AddBorders("NAF", Land, "TUN");
+            AddBorders("NAF", Water, "MAO", "WES", "TUN");
 
-            Land("BOH").AddBorder(Land("MUN"));
-            Land("BOH").AddBorder(Land("SIL"));
-            Land("BOH").AddBorder(Land("GAL"));
-            Land("BOH").AddBorder(Land("VIE"));
-            Land("BOH").AddBorder(Land("TYR"));
+            AddBorders("TUN", Land, "NAF");
+            AddBorders("TUN", Water, "NAF", "WES", "TYS", "ION");
 
-            Land("BUD").AddBorder(Land("VIE"));
-            Land("BUD").AddBorder(Land("GAL"));
-            Land("BUD").AddBorder(Land("RUM"));
-            Land("BUD").AddBorder(Land("SER"));
-            Land("BUD").AddBorder(Land("TRI"));
+            AddBorders("BOH", Land, "MUN", "SIL", "GAL", "VIE", "TYR");
 
-            Land("GAL").AddBorder(Land("BOH"));
-            Land("GAL").AddBorder(Land("SIL"));
-            Land("GAL").AddBorder(Land("WAR"));
-            Land("GAL").AddBorder(Land("UKR"));
-            Land("GAL").AddBorder(Land("RUM"));
-            Land("GAL").AddBorder(Land("BUD"));
-            Land("GAL").AddBorder(Land("VIE"));
+            AddBorders("BUD", Land, "VIE", "GAL", "RUM", "SER", "TRI");
 
-            Land("TRI").AddBorder(Land("VEN"));
-            Land("TRI").AddBorder(Land("TYR"));
-            Land("TRI").AddBorder(Land("VIE"));
-            Land("TRI").AddBorder(Land("BUD"));
-            Land("TRI").AddBorder(Land("SER"));
-            Land("TRI").AddBorder(Land("ALB"));
-            Water("TRI").AddBorder(Water("ALB"));
-            Water("TRI").AddBorder(Water("ADR"));
-            Water("TRI").AddBorder(Water("VEN"));
+            AddBorders("GAL", Land, "BOH", "SIL", "WAR", "UKR", "RUM", "BUD", "VIE");
 
-            Land("TYR").AddBorder(Land("MUN"));
-            Land("TYR").AddBorder(Land("BOH"));
-            Land("TYR").AddBorder(Land("VIE"));
-            Land("TYR").AddBorder(Land("TRI"));
-            Land("TYR").AddBorder(Land("VEN"));
-            Land("TYR").AddBorder(Land("PIE"));
+            AddBorders("TRI", Land, "TYR", "VIE", "BUD", "SER", "ALB");
+            AddBorders("TRI", Water, "ALB", "ADR", "VEN");
 
-            Land("VIE").AddBorder(Land("TYR"));
-            Land("VIE").AddBorder(Land("BOH"));
-            Land("VIE").AddBorder(Land("GAL"));
-            Land("VIE").AddBorder(Land("BUD"));
-            Land("VIE").AddBorder(Land("TRI"));
+            AddBorders("TYR", Land, "MUN", "BOH", "VIE", "TRI", "VEN", "PIE");
 
-            Land("ALB").AddBorder(Land("TRI"));
-            Land("ALB").AddBorder(Land("SER"));
-            Land("ALB").AddBorder(Land("GRE"));
-            Water("ALB").AddBorder(Water("TRI"));
-            Water("ALB").AddBorder(Water("ADR"));
-            Water("ALB").AddBorder(Water("ION"));
-            Water("ALB").AddBorder(Water("GRE"));
+            AddBorders("VIE", Land, "TYR", "BOH", "GAL", "BUD", "TRI");
 
-            Land("BUL").AddBorder(Land("GRE"));
-            Land("BUL").AddBorder(Land("SER"));
-            Land("BUL").AddBorder(Land("RUM"));
-            Land("BUL").AddBorder(Land("CON"));
-            Coast("BUL", "ec").AddBorder(Water("BLA"));
-            Coast("BUL", "ec").AddBorder(Water("CON"));
-            Coast("BUL", "sc").AddBorder(Water("CON"));
-            Coast("BUL", "sc").AddBorder(Water("AEG"));
-            Coast("BUL", "sc").AddBorder(Water("GRE"));
+            AddBorders("ALB", Land, "TRI", "SER", "GRE");
+            AddBorders("ALB", Water, "TRI", "ADR", "ION", "GRE");
 
-            Land("GRE").AddBorder(Land("ALB"));
-            Land("GRE").AddBorder(Land("SER"));
-            Land("GRE").AddBorder(Land("BUL"));
-            Water("GRE").AddBorder(Water("ALB"));
-            Water("GRE").AddBorder(Water("ION"));
-            Water("GRE").AddBorder(Water("AEG"));
+            AddBorders("BUL", Land, "GRE", "SER", "RUM", "CON");
+            AddBordersTo(Coast("BUL", "ec"), Water, "BLA", "CON");
+            AddBordersTo(Coast("BUL", "sc"), Water, "CON", "AEG", "GRE");
+
+            AddBorders("GRE", Land, "ALB", "SER", "BUL");
+            AddBorders("GRE", Water, "ALB", "ION", "AEG");
             Water("GRE").AddBorder(Coast("BUL", "sc"));
 
-            // RUM
+            AddBorders("RUM", Land, "BUL", "SER", "BUD", "GAL", "UKR", "SEV");
+            AddBorders("RUM", Water, "SEV", "BLA");
+            Water("RUM").AddBorder(Coast("BUL", "ec"));
 
-            // SER
+            AddBorders("SER", Land, "BUD", "RUM", "BUL", "GRE", "ALB", "TRI");
 
-            // CLY
+            AddBorders("CLY", Land, "EDI", "LVP");
+            AddBorders("CLY", Water, "LVP", "NAO", "NWG", "EDI");
 
-            // EDI
+            AddBorders("EDI", Land, "YOR", "LVP", "CLY");
+            AddBorders("EDI", Water, "CLY", "NWG", "NTH", "YOR");
 
-            // LVP
+            AddBorders("LVP", Land, "CLY", "EDI", "YOR", "WAL");
+            AddBorders("LVP", Water, "WAL", "IRS", "NAO", "CLY");
 
-            Land("LON").AddBorder(Land("WAL"));
-            Land("LON").AddBorder(Land("YOR"));
-            Water("LON").AddBorder(Water("ENC"));
-            Water("LON").AddBorder(Water("NTH"));
+            AddBorders("LON", Land, "WAL", "YOR");
+            AddBorders("LON", Water, "WAL", "ENC", "NTH", "YOR");
 
-            // WAL
+            AddBorders("WAL", Land, "LVP", "YOR", "LON");
+            AddBorders("WAL", Water, "LON", "ENC", "IRS", "LVP");
 
-            // YOR
+            AddBorders("YOR", Land, "LON", "WAL", "LVP", "EDI");
+            AddBorders("YOR", Water, "EDI", "NTH", "LON");
 
-            // BRE
+            AddBorders("BRE", Land, "PIC", "PAR", "GAS");
+            AddBorders("BRE", Water, "GAS", "MAO", "ENC", "PIC");
 
-            // BUR
+            AddBorders("BUR", Land, "BEL", "RUH", "MUN", "MAR", "GAS", "PAR", "PIC");
 
-            // GAS
+            AddBorders("GAS", Land, "BRE", "PAR", "BUR", "MAR", "SPA");
+            AddBorders("GAS", Water, "MAO", "BRE");
+            Water("GAS").AddBorder(Coast("SPA", "nc"));
 
-            // MAR
+            AddBorders("MAR", Land, "SPA", "GAS", "BUR", "PIE");
+            AddBorders("MAR", Water, "LYO", "PIE");
+            Water("MAR").AddBorder(Coast("SPA", "sc"));
 
-            // PAR
+            AddBorders("PAR", Land, "PIC", "BUR", "GAS", "BRE");
 
-            // PIC
+            AddBorders("PIC", Land, "BEL", "BUR", "PAR", "BRE");
+            AddBorders("PIC", Water, "BRE", "ENC", "BEL");
 
-            Land("BER").AddBorder(Land("PRU"));
-            Land("BER").AddBorder(Land("SIL"));
-            Land("BER").AddBorder(Land("MUN"));
-            Land("BER").AddBorder(Land("KIE"));
-            Water("BER").AddBorder(Water("KIE"));
-            Water("BER").AddBorder(Water("BAL"));
-            Water("BER").AddBorder(Water("PRU"));
+            AddBorders("BER", Land, "PRU", "SIL", "MUN", "KIE");
+            AddBorders("BER", Water, "KIE", "BAL", "PRU");
 
-            Land("KIE").AddBorder(Land("BER"));
-            Land("KIE").AddBorder(Land("MUN"));
-            Land("KIE").AddBorder(Land("RUH"));
-            Land("KIE").AddBorder(Land("HOL"));
-            Land("KIE").AddBorder(Land("DEN"));
-            Water("KIE").AddBorder(Water("HOL"));
-            Water("KIE").AddBorder(Water("HEL"));
-            Water("KIE").AddBorder(Water("DEN"));
-            Water("KIE").AddBorder(Water("BAL"));
-            Water("KIE").AddBorder(Water("BER"));
+            AddBorders("KIE", Land, "BER", "MUN", "RUH", "HOL", "DEN");
+            AddBorders("KIE", Water, "HOL", "HEL", "DEN", "BAL", "BER");
 
-            Land("MUN").AddBorder(Land("BUR"));
-            Land("MUN").AddBorder(Land("RUH"));
-            Land("MUN").AddBorder(Land("KIE"));
-            Land("MUN").AddBorder(Land("BER"));
-            Land("MUN").AddBorder(Land("SIL"));
-            Land("MUN").AddBorder(Land("BOH"));
-            Land("MUN").AddBorder(Land("TYR"));
+            AddBorders("MUN", Land, "BUR", "RUH", "KIE", "BER", "SIL", "BOH", "TYR");
 
-            // PRU
+            AddBorders("PRU", Land, "LVN", "WAR", "SIL", "BER");
+            AddBorders("PRU", Water, "BER", "BAL", "LVN");
 
-            // RUH
+            AddBorders("RUH", Land, "KIE", "MUN", "BUR", "BEL", "HOL");
 
-            // SIL
+            AddBorders("SIL", Land, "PRU", "WAR", "GAL", "BOH", "MUN", "BER");
 
-            // SPA
+            AddBorders("SPA", Land, "POR", "GAS", "MAR");
+            AddBordersTo(Coast("SPA", "nc"), Water, "POR", "MAO", "GAS");
+            AddBordersTo(Coast("SPA", "sc"), Water, "POR", "MAO", "WES", "LYO", "MAR");
 
-            // POR
+            AddBorders("POR", Land, "SPA");
+            AddBorders("POR", Water, "MAO");
+            Water("POR").AddBorder(Coast("SPA", "nc"));
+            Water("POR").AddBorder(Coast("SPA", "sc"));
 
-            // APU
+            AddBorders("APU", Land, "NAP", "ROM", "VEN");
+            AddBorders("APU", Water, "VEN", "ADR", "IOS", "NAP");
 
-            // NAP
+            AddBorders("NAP", Land, "ROM", "APU");
+            AddBorders("NAP", Water, "APU", "IOS", "TYS", "ROM");
 
-            // PIE
+            AddBorders("PIE", Land, "MAR", "TYR", "VEN", "TUS");
+            AddBorders("PIE", Water, "TUS", "LYO", "MAR");
 
-            // ROM
+            AddBorders("ROM", Land, "TUS", "VEN", "APU", "NAP");
+            AddBorders("ROM", Water, "NAP", "TYS", "TUS");
 
-            // TUS
+            AddBorders("TUS", Land, "PIE", "VEN", "ROM");
+            AddBorders("TUS", Water, "ROM", "TYS", "LYO", "PIE");
 
-            // VEN
+            AddBorders("VEN", Land, "APU", "ROM", "TUS", "PIE", "TYR", "TRI");
+            AddBorders("VEN", Water, "TRI", "ADR", "APU");
 
-            // BEL
+            AddBorders("BEL", Land, "HOL", "RUH", "BUR", "PIC");
+            AddBorders("BEL", Water, "PIC", "ENC", "NTH", "HOL");
 
-            Land("HOL").AddBorder(Land("BEL"));
-            Land("HOL").AddBorder(Land("RUH"));
-            Land("HOL").AddBorder(Land("KIE"));
-            Water("HOL").AddBorder(Water("NTH"));
-            Water("HOL").AddBorder(Water("HEL"));
+            AddBorders("HOL", Land, "BEL", "RUH", "KIE");
+            AddBorders("HOL", Water, "NTH", "HEL");
 
-            // FIN
+            AddBorders("FIN", Land, "SWE", "NWY", "STP");
+            AddBorders("FIN", Water, "SWE", "BOT");
+            Water("FIN").AddBorder(Coast("STP", "wc"));
 
-            // LVN
+            AddBorders("LVN", Land, "STP", "MOS", "WAR", "PRU");
+            AddBorders("LVN", Water, "PRU", "BAL", "BOT");
+            Water("LVN").AddBorder(Coast("STP", "wc"));
 
-            // MOS
+            AddBorders("MOS", Land, "SEV", "UKR", "WAR", "LVN", "STP");
 
-            // SEV
+            AddBorders("SEV", Land, "RUM", "UKR", "MOS", "ARM");
+            AddBorders("SEV", Water, "ARM", "BLA", "RUM");
 
-            // STP
+            AddBorders("STP", Land, "MOS", "LVN", "FIN");
+            AddBordersTo(Coast("STP", "nc"), Water, "BAR", "NWY");
+            AddBordersTo(Coast("STP", "wc"), Water, "LVN", "BOT", "FIN");
 
-            // UKR
+            AddBorders("UKR", Land, "MOS", "SEV", "RUM", "GAL", "WAR");
 
-            // WAR
+            AddBorders("WAR", Land, "PRU", "LVN", "MOS", "UKR", "GAL", "SIL");
 
-            // DEN
+            AddBorders("DEN", Land, "KIE", "SWE");
+            AddBorders("DEN", Water, "KIE", "HEL", "NTH", "SKA", "BAL", "SWE");
 
-            // NWY
+            AddBorders("NWY", Land, "STP", "FIN", "SWE");
+            AddBorders("NWY", Water, "BAR", "NWG", "NTH", "SKA", "SWE");
+            Water("NWY").AddBorder(Coast("STP", "nc"));
 
-            // SWE
+            AddBorders("SWE", Land, "NWY", "FIN", "DEN");
+            AddBorders("SWE", Water, "FIN", "BOT", "BAL", "DEN", "SKA", "NWY");
 
-            // ANK
+            AddBorders("ANK", Land, "ARM", "SMY", "CON");
+            AddBorders("ANK", Water, "CON", "BLA", "ARM");
 
-            // ARM
+            AddBorders("ARM", Land, "SEV", "SYR", "SMY", "ANK");
+            AddBorders("ARM", Water, "ANK", "BLA", "SEV");
 
-            // CON
+            AddBorders("CON", Land, "BUL", "ANK", "SMY");
+            AddBorders("CON", Water, "BLA", "ANK", "SMY", "AEG");
+            Water("CON").AddBorder(Coast("BUL", "ec"));
+            Water("CON").AddBorder(Coast("BUL", "sc"));
 
-            // SMY
+            AddBorders("SMY", Land, "CON", "ANK", "ARM", "SYR");
+            AddBorders("SMY", Water, "SYR", "EAS", "AEG", "CON");
 
-            // SYR
+            AddBorders("SYR", Land, "SMY", "ARM");
+            AddBorders("SYR", Water, "EAS", "SMY");
 
-            // BAR
+            AddBorders("BAR", Water, "NWG", "NWY");
+            Water("BAR").AddBorder(Coast("STP", "nc"));
 
-            // ENC
+            AddBorders("ENC", Water, "LON", "NTH", "BEL", "PIC", "BRE", "MAO", "IRS", "WAL");
 
-            // HEL
+            AddBorders("HEL", Water, "NTH", "DEN", "BAL", "KIE", "HOL");
 
-            // IRS
+            AddBorders("IRS", Water, "NAO", "LVP", "WAL", "ENC", "MAO");
 
-            // MAO
+            AddBorders("MAO", Water, "NAO", "IRS", "ENC", "BRE", "GAS", "POR", "NAF");
+            Water("MAO").AddBorder(Coast("SPA", "nc"));
+            Water("MAO").AddBorder(Coast("SPA", "sc"));
 
-            // NAO
+            AddBorders("NAO", Water, "NWG", "CLY", "LVP", "IRS", "MAO");
 
-            Water("NTH").AddBorder(Water("NWG"));
-            Water("NTH").AddBorder(Water("NWY"));
-            Water("NTH").AddBorder(Water("SKA"));
-            Water("NTH").AddBorder(Water("DEN"));
-            Water("NTH").AddBorder(Water("HEL"));
-            Water("NTH").AddBorder(Water("HOL"));
-            Water("NTH").AddBorder(Water("BEL"));
-            Water("NTH").AddBorder(Water("ENC"));
-            Water("NTH").AddBorder(Water("LON"));
-            Water("NTH").AddBorder(Water("YOR"));
-            Water("NTH").AddBorder(Water("EDI"));
+            AddBorders("NTH", Water, "NWG", "NWY", "SKA", "DEN", "HEL", "HOL", "BEL", "ENC", "LON", "YOR", "EDI");
 
-            // NWS
+            AddBorders("NWG", Water, "BAR", "NWY", "NTH", "EDI", "CLY", "NAO");
 
-            // SKA
+            AddBorders("SKA", Water, "NWY", "SWE", "BAL", "DEN", "NTH");
 
-            // BAL
+            AddBorders("BAL", Water, "BOT", "LVN", "PRU", "BER", "KIE", "HEL", "DEN", "SWE");
 
-            // GOB
+            AddBorders("BOT", Water, "LVN", "BAL", "SWE", "FIN");
+            Water("BOT").AddBorder(Coast("STP", "wc"));
 
-            // ADS
+            AddBorders("ADR", Water, "IOS", "APU", "VEN", "TRI", "ALB");
 
-            // AEG
+            AddBorders("AEG", Water, "CON", "SMY", "EAS", "IOS", "GRE");
+            Water("AEG").AddBorder(Coast("BUL", "sc"));
 
-            // BLA
+            AddBorders("BLA", Water, "RUM", "SEV", "ARM", "ANK", "CON");
+            Water("BLA").AddBorder(Coast("BUL", "ec"));
 
-            // EMS
+            AddBorders("EAS", Water, "IOS", "AEG", "SMY", "SYR");
 
-            // GOL
+            AddBorders("LYO", Water, "MAR", "PIE", "TUS", "TYS", "WES");
+            Water("LYO").AddBorder(Coast("SPA", "sc"));
 
-            Water("IOS").AddBorder(Water("TUN"));
-            Water("IOS").AddBorder(Water("TYS"));
-            Water("IOS").AddBorder(Water("NAP"));
-            Water("IOS").AddBorder(Water("APU"));
-            Water("IOS").AddBorder(Water("ADR"));
-            Water("IOS").AddBorder(Water("ALB"));
-            Water("IOS").AddBorder(Water("GRE"));
-            Water("IOS").AddBorder(Water("AEG"));
+            AddBorders("IOS", Water, "TUN", "TYS", "NAP", "APU", "ADR", "ALB", "GRE", "AEG");
 
-            // TYS
+            AddBorders("TYS", Water, "LYO", "TUS", "ROM", "NAP", "IOS", "TUN", "WES");
 
-            // WMS
+            AddBorders("WES", Water, "LYO", "TYS", "TUN", "NAF", "MAO");
+            Water("WES").AddBorder(Coast("SPA", "sc"));
 
             return new(standardProvinces);
         }
