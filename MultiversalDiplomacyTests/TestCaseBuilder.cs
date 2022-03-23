@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 
+using MultiversalDiplomacy.Adjudicate;
 using MultiversalDiplomacy.Model;
 using MultiversalDiplomacy.Orders;
 
@@ -44,12 +45,12 @@ public class TestCaseBuilder
         /// <summary>
         /// Give the unit a hold order.
         /// </summary>
-        public IPowerContext Holds();
+        public IOrderDefinedContext<HoldOrder> Holds();
 
         /// <summary>
         /// Give the unit a move order.
         /// </summary>
-        public IPowerContext MovesTo(string provinceName, string? coast = null);
+        public IOrderDefinedContext<MoveOrder> MovesTo(string provinceName, string? coast = null);
 
         /// <summary>
         /// Give the unit a convoy order.
@@ -89,7 +90,7 @@ public class TestCaseBuilder
         /// <summary>
         /// Define the destination of the convoy order.
         /// </summary>
-        public IPowerContext To(string provinceName);
+        public IOrderDefinedContext<ConvoyOrder> To(string provinceName);
     }
 
     /// <summary>
@@ -119,18 +120,47 @@ public class TestCaseBuilder
         /// <summary>
         /// Give the unit an order to support the target's hold order.
         /// </summary>
-        public IPowerContext Hold();
+        public IOrderDefinedContext<SupportHoldOrder> Hold();
 
         /// <summary>
         /// Give the unit an order to support the target's move order.
         /// </summary>
-        public IPowerContext MoveTo(string provinceName, string? coast = null);
+        public IOrderDefinedContext<SupportMoveOrder> MoveTo(string provinceName, string? coast = null);
+    }
+
+    /// <summary>
+    /// Context for additional operations on a defined order or defining another order. This
+    /// context mimics the <see cref="IPowerContext"/> with additional functionality related to
+    /// the order that was just defined.
+    /// </summary>
+    public interface IOrderDefinedContext<OrderType> where OrderType : Order
+    {
+        /// <summary>
+        /// Get the context for defining the orders for another power.
+        /// </summary>
+        public IPowerContext this[string powerName] { get; }
+
+        /// <summary>
+        /// Define an order for a new army in a province.
+        /// </summary>
+        public IUnitContext Army(string provinceName);
+
+        /// <summary>
+        /// Define an order for a new fleet in a province, optionally on a specific coast.
+        /// </summary>
+        public IUnitContext Fleet(string provinceName, string? coast = null);
+
+        /// <summary>
+        /// Save a reference to the order just defined.
+        /// </summary>
+        public IOrderDefinedContext<OrderType> GetReference(out OrderReference<OrderType> order);
     }
 
     public World World { get; private set; }
     public ReadOnlyCollection<Order> Orders { get; }
     private List<Order> OrderList;
     private Season Season;
+    public List<OrderValidation>? ValidationResults { get; private set; }
 
     /// <summary>
     /// Create a test case builder that will operate on a world.
@@ -138,9 +168,10 @@ public class TestCaseBuilder
     public TestCaseBuilder(World world, Season? season = null)
     {
         this.World = world;
-        this.OrderList = new List<Order>();
+        this.OrderList = new();
         this.Orders = new(this.OrderList);
         this.Season = season ?? this.World.Seasons.First();
+        this.ValidationResults = null;
     }
 
     /// <summary>
@@ -186,6 +217,12 @@ public class TestCaseBuilder
         Unit newUnit = Unit.Build(location, season, power, type);
         this.World = this.World.WithUnits(this.World.Units.Append(newUnit));
         return newUnit;
+    }
+
+    public List<OrderValidation> ValidateOrders(IPhaseAdjudicator adjudicator)
+    {
+        this.ValidationResults = adjudicator.ValidateOrders(this.World, this.Orders.ToList());
+        return this.ValidationResults;
     }
 
     private class PowerContext : IPowerContext
@@ -241,17 +278,17 @@ public class TestCaseBuilder
         /// <summary>
         /// Order a unit to hold.
         /// </summary>
-        public IPowerContext Holds()
+        public IOrderDefinedContext<HoldOrder> Holds()
         {
             HoldOrder order = new HoldOrder(this.PowerContext.Power, this.Unit);
             this.Builder.OrderList.Add(order);
-            return this.PowerContext;
+            return new OrderDefinedContext<HoldOrder>(this, order);
         }
 
         /// <summary>
         /// Order a unit to move to a destination.
         /// </summary>
-        public IPowerContext MovesTo(string provinceName, string? coast = null)
+        public IOrderDefinedContext<MoveOrder> MovesTo(string provinceName, string? coast = null)
         {
             Location destination = this.Unit.Type == UnitType.Army
                 ? this.Builder.World.GetLand(provinceName)
@@ -262,7 +299,7 @@ public class TestCaseBuilder
                 this.Builder.Season,
                 destination);
             this.Builder.OrderList.Add(moveOrder);
-            return this.PowerContext;
+            return new OrderDefinedContext<MoveOrder>(this, moveOrder);
         }
 
         public IConvoyContext Convoys
@@ -326,7 +363,7 @@ public class TestCaseBuilder
             this.Target = target;
         }
 
-        public IPowerContext To(string provinceName)
+        public IOrderDefinedContext<ConvoyOrder> To(string provinceName)
         {
             Location location = this.Builder.World.GetLand(provinceName);
             ConvoyOrder order = new ConvoyOrder(
@@ -336,7 +373,7 @@ public class TestCaseBuilder
                 this.Builder.Season,
                 location);
             this.Builder.OrderList.Add(order);
-            return this.PowerContext;
+            return new OrderDefinedContext<ConvoyOrder>(this.UnitContext, order);
         }
     }
 
@@ -394,17 +431,17 @@ public class TestCaseBuilder
             this.Target = target;
         }
 
-        public IPowerContext Hold()
+        public IOrderDefinedContext<SupportHoldOrder> Hold()
         {
             SupportHoldOrder order = new SupportHoldOrder(
                 this.PowerContext.Power,
                 this.UnitContext.Unit,
                 this.Target);
             this.Builder.OrderList.Add(order);
-            return this.PowerContext;
+            return new OrderDefinedContext<SupportHoldOrder>(this.UnitContext, order);
         }
 
-        public IPowerContext MoveTo(string provinceName, string? coast = null)
+        public IOrderDefinedContext<SupportMoveOrder> MoveTo(string provinceName, string? coast = null)
         {
             Location destination = this.Target.Type == UnitType.Army
                 ? this.Builder.World.GetLand(provinceName)
@@ -416,7 +453,36 @@ public class TestCaseBuilder
                 this.Builder.Season,
                 destination);
             this.Builder.OrderList.Add(order);
-            return this.PowerContext;
+            return new OrderDefinedContext<SupportMoveOrder>(this.UnitContext, order);
+        }
+    }
+
+    private class OrderDefinedContext<OrderType> : IOrderDefinedContext<OrderType> where OrderType : Order
+    {
+        public TestCaseBuilder Builder;
+        public PowerContext PowerContext;
+        public UnitContext UnitContext;
+        public OrderType Order;
+
+        public OrderDefinedContext(UnitContext unitContext, OrderType order)
+        {
+            this.Builder = unitContext.Builder;
+            this.PowerContext = unitContext.PowerContext;
+            this.UnitContext = unitContext;
+            this.Order = order;
+        }
+
+        public IPowerContext this[string powerName] => this.PowerContext[powerName];
+
+        public IUnitContext Army(string provinceName) => this.PowerContext.Army(provinceName);
+
+        public IUnitContext Fleet(string provinceName, string? coast = null)
+            => this.PowerContext.Fleet(provinceName);
+
+        public IOrderDefinedContext<OrderType> GetReference(out OrderReference<OrderType> order)
+        {
+            order = new OrderReference<OrderType>(this.Builder, this.Order);
+            return this;
         }
     }
 }

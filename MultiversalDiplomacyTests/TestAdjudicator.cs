@@ -6,6 +6,9 @@ namespace MultiversalDiplomacyTests;
 
 public class TestAdjudicator : IPhaseAdjudicator
 {
+    public static Func<World, List<Order>, List<OrderValidation>> RubberStamp =
+        (world, orders) => orders.Select(o => o.Validate(ValidationReason.Valid)).ToList();
+
     private Func<World, List<Order>, List<OrderValidation>> ValidateOrdersCallback;
 
     public TestAdjudicator(

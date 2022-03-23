@@ -1,3 +1,4 @@
+using MultiversalDiplomacy.Adjudicate;
 using MultiversalDiplomacy.Model;
 using MultiversalDiplomacy.Orders;
 
@@ -111,5 +112,48 @@ class TestCaseBuilderTest
             "Unexpected convoy order target");
 
         Assert.That(orders.Where(OrderForProvince("London")), Is.Empty, "Unexpected order");
+    }
+
+    [Test]
+    public void BuilderProvidesReferencesForValidation()
+    {
+        IPhaseAdjudicator rubberStamp = new TestAdjudicator(TestAdjudicator.RubberStamp);
+
+        TestCaseBuilder setup = new TestCaseBuilder(World.WithStandardMap().WithInitialSeason());
+        setup["Germany"]
+            .Army("Mun").Holds().GetReference(out var orderMun);
+
+        Assert.That(orderMun, Is.Not.Null, "Expected order reference");
+        Assert.That(
+            orderMun.Order.Power,
+            Is.EqualTo(setup.World.GetPower("Germany")),
+            "Wrong power");
+        Assert.That(
+            orderMun.Order.Unit.Location,
+            Is.EqualTo(setup.World.GetLand("Mun")),
+            "Wrong unit");
+
+        Assert.That<OrderValidation>(
+            () => orderMun.Validation,
+            Throws.Exception,
+            "Validation property should be inaccessible before validation actually happens");
+        setup.ValidateOrders(rubberStamp);
+        Assert.That<OrderValidation>(
+            () => orderMun.Validation,
+            Throws.Nothing,
+            "Validation property should be accessible after validation");
+
+        Assert.That(
+            orderMun.Validation.Order,
+            Is.EqualTo(orderMun.Order),
+            "Validation for wrong order");
+        Assert.That(
+            orderMun.Validation.Valid,
+            Is.True,
+            "Unexpected validation result");
+        Assert.That(
+            orderMun.Validation.Reason,
+            Is.EqualTo(ValidationReason.Valid),
+            "Unexpected validation reason");
     }
 }
