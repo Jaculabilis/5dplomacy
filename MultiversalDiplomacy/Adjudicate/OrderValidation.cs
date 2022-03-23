@@ -27,6 +27,16 @@ public class OrderValidation
         this.Order = order;
         this.Valid = valid;
         this.Reason = reason;
+
+        if (this.Valid != (this.Reason == ValidationReason.Valid))
+        {
+            throw new ArgumentException("Only valid orders should have the Valid reason");
+        }
+    }
+
+    public override string ToString()
+    {
+        return this.Valid ? "Valid" : $"Invalid ({this.Reason})";
     }
 }
 

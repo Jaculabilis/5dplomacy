@@ -17,15 +17,8 @@ public class MovementAdjudicatorTest
 
         setup.ValidateOrders(new MovementPhaseAdjudicator());
 
-        Assert.Multiple(() =>
-        {
-            Assert.That(order.Validation.Valid, Is.True, "Unexpected validation result");
-            Assert.That(
-                order.Validation.Reason,
-                Is.EqualTo(ValidationReason.Valid),
-                "Unexpected validation reason");
-            Assert.That(order.Replacement, Is.Null, "Unexpected order replacement");
-        });
+        Assert.That(order.Validation, Is.Valid, "Unexpected validation result");
+        Assert.That(order.Replacement, Is.Null, "Unexpected order replacement");
     }
 
     [Test]
@@ -37,15 +30,8 @@ public class MovementAdjudicatorTest
 
         setup.ValidateOrders(new MovementPhaseAdjudicator());
 
-        Assert.Multiple(() =>
-        {
-            Assert.That(order.Validation.Valid, Is.True, "Unexpected validation result");
-            Assert.That(
-                order.Validation.Reason,
-                Is.EqualTo(ValidationReason.Valid),
-                "Unexpected validation reason");
-            Assert.That(order.Replacement, Is.Null, "Unexpected order replacement");
-        });
+        Assert.That(order.Validation, Is.Valid, "Unexpected validation result");
+        Assert.That(order.Replacement, Is.Null, "Unexpected order replacement");
     }
 
     [Test]
@@ -57,15 +43,8 @@ public class MovementAdjudicatorTest
 
         setup.ValidateOrders(new MovementPhaseAdjudicator());
 
-        Assert.Multiple(() =>
-        {
-            Assert.That(order.Validation.Valid, Is.True, "Unexpected validation result");
-            Assert.That(
-                order.Validation.Reason,
-                Is.EqualTo(ValidationReason.Valid),
-                "Unexpected validation reason");
-            Assert.That(order.Replacement, Is.Null, "Unexpected order replacement");
-        });
+        Assert.That(order.Validation, Is.Valid, "Unexpected validation result");
+        Assert.That(order.Replacement, Is.Null, "Unexpected order replacement");
     }
 
     [Test]
@@ -77,15 +56,8 @@ public class MovementAdjudicatorTest
 
         setup.ValidateOrders(new MovementPhaseAdjudicator());
 
-        Assert.Multiple(() =>
-        {
-            Assert.That(order.Validation.Valid, Is.True, "Unexpected validation result");
-            Assert.That(
-                order.Validation.Reason,
-                Is.EqualTo(ValidationReason.Valid),
-                "Unexpected validation reason");
-            Assert.That(order.Replacement, Is.Null, "Unexpected order replacement");
-        });
+        Assert.That(order.Validation, Is.Valid, "Unexpected validation result");
+        Assert.That(order.Replacement, Is.Null, "Unexpected order replacement");
     }
 
     [Test]
@@ -97,14 +69,7 @@ public class MovementAdjudicatorTest
 
         setup.ValidateOrders(new MovementPhaseAdjudicator());
 
-        Assert.Multiple(() =>
-        {
-            Assert.That(order.Validation.Valid, Is.True, "Unexpected validation result");
-            Assert.That(
-                order.Validation.Reason,
-                Is.EqualTo(ValidationReason.Valid),
-                "Unexpected validation reason");
-            Assert.That(order.Replacement, Is.Null, "Unexpected order replacement");
-        });
+        Assert.That(order.Validation, Is.Valid, "Unexpected validation result");
+        Assert.That(order.Replacement, Is.Null, "Unexpected order replacement");
     }
 }
