@@ -28,6 +28,11 @@ public class World
     public ReadOnlyCollection<Unit> Units { get; }
 
     /// <summary>
+    /// All retreating units in the multiverse.
+    /// </summary>
+    public ReadOnlyCollection<RetreatingUnit> RetreatingUnits { get; }
+
+    /// <summary>
     /// Immutable game options.
     /// </summary>
     public Options Options { get; }
@@ -37,12 +42,14 @@ public class World
         ReadOnlyCollection<Power> powers,
         ReadOnlyCollection<Season> seasons,
         ReadOnlyCollection<Unit> units,
+        ReadOnlyCollection<RetreatingUnit> retreatingUnits,
         Options options)
     {
         this.Provinces = provinces;
         this.Powers = powers;
         this.Seasons = seasons;
         this.Units = units;
+        this.RetreatingUnits = retreatingUnits;
         this.Options = options;
     }
 
@@ -55,6 +62,7 @@ public class World
             new(powers.ToList()),
             new(new List<Season>()),
             new(new List<Unit>()),
+            new(new List<RetreatingUnit>()),
             new Options());
 
     /// <summary>
@@ -67,7 +75,13 @@ public class World
     /// Create a new world with new seasons.
     /// </summary>
     public World WithSeasons(IEnumerable<Season> seasons)
-        => new World(this.Provinces, this.Powers, new(seasons.ToList()), this.Units, this.Options);
+        => new World(
+            this.Provinces,
+            this.Powers,
+            new(seasons.ToList()),
+            this.Units,
+            this.RetreatingUnits,
+            this.Options);
 
     /// <summary>
     /// Create a new world with an initial season.
@@ -79,7 +93,13 @@ public class World
     /// Create a new world with new units.
     /// </summary>
     public World WithUnits(IEnumerable<Unit> units)
-        => new World(this.Provinces, this.Powers, this.Seasons, new(units.ToList()), this.Options);
+        => new World(
+            this.Provinces,
+            this.Powers,
+            this.Seasons,
+            new(units.ToList()),
+            this.RetreatingUnits,
+            this.Options);
 
     /// <summary>
     /// Create a new world with new units created from unit specs. Units specs are in the format
@@ -139,6 +159,15 @@ public class World
             "Turkey F Ank"
         );
     }
+
+    public World WithRetreats(IEnumerable<RetreatingUnit> retreatingUnits)
+        => new World(
+            this.Provinces,
+            this.Powers,
+            this.Seasons,
+            this.Units,
+            new(retreatingUnits.ToList()),
+            this.Options);
 
     /// <summary>
     /// A standard Diplomacy game setup.
