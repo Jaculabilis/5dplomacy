@@ -19,4 +19,11 @@ public class TestAdjudicator : IPhaseAdjudicator
 
     public List<OrderValidation> ValidateOrders(World world, List<Order> orders)
         => this.ValidateOrdersCallback.Invoke(world, orders);
+
+    public (List<OrderAdjudication> results, World updated) AdjudicateOrders(
+        World world,
+        List<Order> orders)
+    {
+        throw new NotImplementedException();
+    }
 }

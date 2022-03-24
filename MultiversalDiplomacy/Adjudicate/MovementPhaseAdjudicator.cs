@@ -8,6 +8,281 @@ namespace MultiversalDiplomacy.Adjudicate;
 /// </summary>
 public class MovementPhaseAdjudicator : IPhaseAdjudicator
 {
+    /// <summary>
+    /// Base class for adjudication decisions. The decision-based adjudication algorithm is based
+    /// on DATC section 5 and "The Math of Adjudication" by Lucas Kruijswijk, respectively found at
+    /// http://web.inter.nl.net/users/L.B.Kruijswijk/#5 and
+    /// http://uk.diplom.org/pouch/Zine/S2009M/Kruijswijk/DipMath_Chp1.htm
+    /// </summary>
+    private abstract class AdjudicationDecision
+    {
+        public abstract bool Resolved { get; }
+    }
+
+    private abstract class BinaryAdjudicationDecision : AdjudicationDecision
+    {
+        public bool? Outcome { get; private set; } = null;
+
+        public override bool Resolved => this.Outcome != null;
+
+        public bool Update(bool outcome)
+        {
+            if (this.Outcome == null)
+            {
+                this.Outcome = outcome;
+                return true;
+            }
+            if (this.Outcome != outcome)
+            {
+                string name = this.GetType().Name;
+                throw new ArgumentException(
+                    $"Cannot reverse adjudication of {name} from {this.Outcome} to {outcome}");
+            }
+            return false;
+        }
+    }
+
+    private abstract class NumericAdjudicationDecision : AdjudicationDecision
+    {
+        public int MinValue { get; private set; } = 0;
+        public int MaxValue { get; private set; } = 99;
+
+        public override bool Resolved => this.MinValue == this.MaxValue;
+
+        public bool Update(int min, int max)
+        {
+            if (min < this.MinValue || max > this.MaxValue)
+            {
+                string name = this.GetType().Name;
+                throw new ArgumentException(
+                    $"Cannot reverse adjudication of {name} from ({this.MinValue},{this.MaxValue})"
+                    + $" to ({min},{max})");
+            }
+            bool updated = this.MinValue != min || this.MaxValue != max;
+            this.MinValue = min;
+            this.MaxValue = max;
+            return updated;
+        }
+    }
+
+    private class IsDislodged : BinaryAdjudicationDecision
+    {
+        public UnitOrder Order { get; }
+        public List<MoveOrder> Incoming { get; }
+
+        public IsDislodged(UnitOrder order, IEnumerable<MoveOrder> incoming)
+        {
+            this.Order = order;
+            this.Incoming = incoming.ToList();
+        }
+    }
+
+    private class HasPath : BinaryAdjudicationDecision
+    {
+        public MoveOrder Order { get; }
+
+        public HasPath(MoveOrder order)
+        {
+            this.Order = order;
+        }
+    }
+
+    private class GivesSupport : BinaryAdjudicationDecision
+    {
+        public SupportOrder Order { get; }
+        public List<MoveOrder> Cuts { get; }
+
+        public GivesSupport(SupportOrder order, IEnumerable<MoveOrder> cuts)
+        {
+            this.Order = order;
+            this.Cuts = cuts.ToList();
+        }
+    }
+
+    private class HoldStrength : NumericAdjudicationDecision
+    {
+        public Province Province { get; }
+        public UnitOrder? Order { get; }
+        public List<SupportHoldOrder> Supports { get; }
+
+        public HoldStrength(Province province, UnitOrder? order = null)
+        {
+            this.Province = province;
+            this.Order = order;
+            this.Supports = new();
+        }
+    }
+
+    private class AttackStrength : NumericAdjudicationDecision
+    {
+        public MoveOrder Order { get; }
+        public List<SupportMoveOrder> Supports { get; }
+        public MoveOrder? OpposingMove { get; }
+
+        public AttackStrength(MoveOrder order, IEnumerable<SupportMoveOrder> supports, MoveOrder? opposingMove = null)
+        {
+            this.Order = order;
+            this.Supports = supports.ToList();
+            this.OpposingMove = opposingMove;
+        }
+    }
+
+    private class DefendStrength : NumericAdjudicationDecision
+    {
+        public MoveOrder Order { get; }
+        public List<SupportMoveOrder> Supports { get; }
+
+        public DefendStrength(MoveOrder order, IEnumerable<SupportMoveOrder> supports)
+        {
+            this.Order = order;
+            this.Supports = supports.ToList();
+        }
+    }
+
+    private class PreventStrength : NumericAdjudicationDecision
+    {
+        public MoveOrder Order { get; }
+        public List<SupportMoveOrder> Supports { get; }
+        public MoveOrder? OpposingMove { get; }
+
+        public PreventStrength(MoveOrder order, IEnumerable<SupportMoveOrder> supports, MoveOrder? opposingMove = null)
+        {
+            this.Order = order;
+            this.Supports = supports.ToList();
+            this.OpposingMove = opposingMove;
+        }
+    }
+
+    private class DoesMove : BinaryAdjudicationDecision
+    {
+        public MoveOrder Order { get; }
+        public MoveOrder? OpposingMove { get; }
+        public List<MoveOrder> Competing { get; }
+
+        public DoesMove(MoveOrder order, MoveOrder? opposingMove, IEnumerable<MoveOrder> competing)
+        {
+            this.Order = order;
+            this.OpposingMove = opposingMove;
+            this.Competing = competing.ToList();
+        }
+    }
+
+    private class Decisions
+    {
+        public Dictionary<Unit, IsDislodged> IsDislodged { get; }
+        public Dictionary<MoveOrder, HasPath> HasPath { get; }
+        public Dictionary<SupportOrder, GivesSupport> GivesSupport { get; }
+        public Dictionary<Province, HoldStrength> HoldStrength { get; }
+        public Dictionary<MoveOrder, AttackStrength> AttackStrength { get; }
+        public Dictionary<MoveOrder, DefendStrength> DefendStrength { get; }
+        public Dictionary<MoveOrder, PreventStrength> PreventStrength { get; }
+        public Dictionary<MoveOrder, DoesMove> DoesMove { get; }
+
+        public List<AdjudicationDecision> UnresolvedDecisions { get; }
+
+        public Decisions(List<Order> orders)
+        {
+            this.IsDislodged = new();
+            this.HasPath = new();
+            this.GivesSupport = new();
+            this.HoldStrength = new();
+            this.AttackStrength = new();
+            this.DefendStrength = new();
+            this.PreventStrength = new();
+            this.DoesMove = new();
+
+            foreach (UnitOrder order in orders.Cast<UnitOrder>())
+            {
+                // Create a dislodge decision for this unit.
+                List<MoveOrder> incoming = orders
+                    .OfType<MoveOrder>()
+                    .Where(move => move.Location.Province == order.Unit.Location.Province)
+                    .ToList();
+                this.IsDislodged[order.Unit] = new(order, incoming);
+
+                // Ensure a hold strength decision exists.
+                Province province = order.Unit.Location.Province;
+                if (!this.HoldStrength.ContainsKey(province))
+                {
+                    this.HoldStrength[province] = new(province, order);
+                }
+
+                if (order is MoveOrder move)
+                {
+                    // Find supports corresponding to this move.
+                    List<SupportMoveOrder> supports = orders
+                        .OfType<SupportMoveOrder>()
+                        .Where(support => support.IsSupportFor(move))
+                        .ToList();
+
+                    // Determine if this move is a head-to-head battle.
+                    MoveOrder? opposingMove = orders
+                        .OfType<MoveOrder>()
+                        .FirstOrDefault(other => other != null && other.IsOpposing(move), null);
+
+                    // Find competing moves.
+                    List<MoveOrder> competing = orders
+                        .OfType<MoveOrder>()
+                        .Where(other => other.Location.Province == move.Location.Province)
+                        .ToList();
+
+                    // Create the move-related decisions.
+                    this.HasPath[move] = new(move);
+                    this.AttackStrength[move] = new(move, supports, opposingMove);
+                    this.DefendStrength[move] = new(move, supports);
+                    this.PreventStrength[move] = new(move, supports, opposingMove);
+                    this.DoesMove[move] = new(move, opposingMove, competing);
+
+                    // Ensure a hold strength decision exists for the destination.
+                    Province dest = move.Location.Province;
+                    if (!this.HoldStrength.ContainsKey(dest))
+                    {
+                        this.HoldStrength[dest] = new(dest);
+                    }
+                }
+                else if (order is SupportOrder support)
+                {
+                    // Create the support decision.
+                    this.GivesSupport[support] = new(support, incoming);
+
+                    // Ensure a hold strength decision exists for the target's province.
+                    Province target = support.Target.Location.Province;
+                    if (!this.HoldStrength.ContainsKey(target))
+                    {
+                        this.HoldStrength[target] = new(target);
+                    }
+
+                    if (support is SupportHoldOrder supportHold)
+                    {
+                        this.HoldStrength[target].Supports.Add(supportHold);
+                    }
+                    else if (support is SupportMoveOrder supportMove)
+                    {
+                        // Ensure a hold strength decision exists for the target's destination.
+                        Province dest = supportMove.Location.Province;
+                        if (!this.HoldStrength.ContainsKey(dest))
+                        {
+                            this.HoldStrength[dest] = new(dest);
+                        }
+                    }
+                }
+            }
+
+            this.UnresolvedDecisions = new List<AdjudicationDecision>()
+                .Concat(this.IsDislodged.Values)
+                .Concat(this.HasPath.Values)
+                .Concat(this.GivesSupport.Values)
+                .Concat(this.HoldStrength.Values)
+                .Concat(this.AttackStrength.Values)
+                .Concat(this.DefendStrength.Values)
+                .Concat(this.PreventStrength.Values)
+                .Concat(this.DoesMove.Values)
+                .ToList();
+        }
+    }
+
+    public static IPhaseAdjudicator Instance { get; } = new MovementPhaseAdjudicator();
+
     public List<OrderValidation> ValidateOrders(World world, List<Order> orders)
     {
         // The basic workflow of this function will be to look for invalid orders, remove these
@@ -258,5 +533,513 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
             .ToList();
 
         return validationResults;
+    }
+
+    public (List<OrderAdjudication> results, World updated) AdjudicateOrders(
+        World world,
+        List<Order> orders)
+    {
+        // Define all adjudication decisions to be made.
+        Decisions decisions = new Decisions(orders);
+
+        // Adjudicate all decisions.
+        bool progress = false;
+        do
+        {
+            progress = false;
+            foreach (AdjudicationDecision decision in decisions.UnresolvedDecisions.ToList())
+            {
+                progress |= ResolveDecision(decision, world, decisions);
+                if (decision.Resolved) decisions.UnresolvedDecisions.Remove(decision);
+            }
+        } while (progress);
+
+        if (decisions.UnresolvedDecisions.Any())
+        {
+            throw new ApplicationException("Some orders not resolved!");
+        }
+
+        List<OrderAdjudication> adjudications = new();
+
+        // All orders other than move orders are hold orders with extra steps.
+        ILookup<bool, Order> moveOrders = orders.ToLookup(order => order is MoveOrder);
+        List<Order> nonMoveOrders = moveOrders[false].ToList();
+
+        // All moves to a particular season in a single phase result in the same future. Keep a
+        // record of when a future season has been created.
+        Dictionary<Season, Season> createdFutures = new();
+        List<Unit> createdUnits = new();
+        List<RetreatingUnit> retreats = new();
+
+        // For each move order with a successful does-move decision, ensure the future exists and
+        // progress the unit to the future.
+        foreach (MoveOrder move in moveOrders[true].Cast<MoveOrder>())
+        {
+            DoesMove doesMove = decisions.DoesMove[move];
+            if (doesMove.Outcome == true)
+            {
+                if (!createdFutures.TryGetValue(move.Season, out Season? future))
+                {
+                    // A timeline doesn't fork unless it already has a continuation.
+                    future = move.Season.Futures.Any()
+                        ? move.Season.MakeNext()
+                        : move.Season.MakeFork();
+                    createdFutures[move.Season] = future;
+                }
+                createdUnits.Add(move.Unit.Next(move.Location, future));
+            }
+            else
+            {
+                // If the move order failed, the moving unit will stay put, which puts it in the
+                // same bucket as the hold orders.
+                nonMoveOrders.Add(move);
+            }
+            adjudications.Add(new(move, doesMove.Outcome == true));
+        }
+
+        foreach (UnitOrder order in nonMoveOrders.Cast<UnitOrder>())
+        {
+            if (!createdFutures.TryGetValue(order.Unit.Season, out Season? future))
+            {
+                // Any unit given an order is, by definition, at the front of a timeline.
+                future = order.Unit.Season.MakeNext();
+                createdFutures[order.Unit.Season] = future;
+            }
+
+            // For each stationary unit that wasn't dislodged, continue it into the future.
+            IsDislodged isDislodged = decisions.IsDislodged[order.Unit];
+            if (isDislodged.Outcome == false)
+            {
+                createdUnits.Add(order.Unit.Next(order.Unit.Location, future));
+            }
+            else
+            {
+                // Create a retreat for each dislodged unit.
+                // TODO check valid retreats and disbands
+                var validRetreats = order.Unit.Location.Adjacents
+                    .Select(loc => (future, loc))
+                    .ToList();
+                RetreatingUnit retreat = new(order.Unit, validRetreats);
+                retreats.Add(retreat);
+            }
+
+            if (order is SupportOrder support)
+            {
+                adjudications.Add(new(support, decisions.GivesSupport[support].Outcome == true));
+            }
+            else
+            {
+                adjudications.Add(new(order, isDislodged.Outcome == false));
+            }
+        }
+
+        // TODO provide more structured information about order outcomes
+
+        World updated = world
+            .WithSeasons(world.Seasons.Concat(createdFutures.Values))
+            .WithUnits(world.Units.Concat(createdUnits))
+            .WithRetreats(retreats);
+
+        return (adjudications, updated);
+    }
+
+    private bool ResolveDecision(AdjudicationDecision decision, World world, Decisions decisions)
+        => decision.Resolved ? false : decision switch
+        {
+            IsDislodged d => ResolveIsUnitDislodged(d, world, decisions),
+            HasPath d => ResolveDoesMoveHavePath(d, world, decisions),
+            GivesSupport d => ResolveIsSupportGiven(d, world, decisions),
+            HoldStrength d => ResolveHoldStrength(d, world, decisions),
+            AttackStrength d => ResolveAttackStrength(d, world, decisions),
+            DefendStrength d => ResolveDefendStrength(d, world, decisions),
+            PreventStrength d => ResolvePreventStrength(d, world, decisions),
+            DoesMove d => ResolveDoesUnitMove(d, world, decisions),
+            _ => throw new NotSupportedException($"Unknown decision type: {decision.GetType()}")
+        };
+
+    private bool ResolveIsUnitDislodged(IsDislodged decision, World world, Decisions decisions)
+    {
+        bool progress = false;
+
+        // If this unit was ordered to move and is doing so successfully, it cannot be dislodged
+        // even if another unit will successfully move into the province.
+        if (decision.Order is MoveOrder moveOrder)
+        {
+            DoesMove move = decisions.DoesMove[moveOrder];
+            progress |= ResolveDecision(move, world, decisions);
+
+            // If this unit received a move order and the move is successful, it cannot be
+            // dislodged.
+            if (move.Outcome == true)
+            {
+                progress |= decision.Update(false);
+                return progress;
+            }
+
+            // If the move is undecided, then the dislodge decision is undecidable until then.
+            if (move.Outcome == null)
+            {
+                return progress;
+            }
+        }
+
+        // If this unit isn't moving from its current province, then it is dislodged if another
+        // unit has a successful move into its province, and it is not dislodged if every unit that
+        // could move into its province fails to do so.
+        bool potentialDislodger = false;
+        foreach (MoveOrder dislodger in decision.Incoming)
+        {
+            DoesMove move = decisions.DoesMove[dislodger];
+            progress |= ResolveDecision(move, world, decisions);
+
+            // If at least one invader will move, this unit is dislodged.
+            if (move.Outcome == true)
+            {
+                progress |= decision.Update(true);
+                return progress;
+            }
+
+            // If the invader could potentially move, the dislodge decision can't be resolved to
+            // false.
+            if (move.Outcome != false)
+            {
+                potentialDislodger = true;
+            }
+        }
+
+        if (!potentialDislodger)
+        {
+            progress |= decision.Update(false);
+        }
+
+        return progress;
+    }
+
+    private bool ResolveDoesMoveHavePath(HasPath decision, World world, Decisions decisions)
+    {
+        bool progress= false;
+
+        // If the origin and destination are adjacent, then there is a path.
+        if (// Map adjacency
+            decision.Order.Unit.Location.Adjacents.Contains(decision.Order.Location)
+            // Turn adjacency
+            && Math.Abs(decision.Order.Unit.Season.Turn - decision.Order.Season.Turn) <= 1
+            // Timeline adjacency
+            && decision.Order.Unit.Season.InAdjacentTimeline(decision.Order.Season))
+        {
+            progress |= decision.Update(true);
+            return progress;
+        }
+
+        // If the origin and destination are not adjacent, then the decision resolves to whether
+        // there is a path of convoying fleets that (1) have matching orders and (2) are not
+        // dislodged.
+
+        // The adjudicator should have received a validated set of orders, so any illegal move
+        // with no possible convoy path should have been invalidated.
+
+        throw new NotImplementedException(); // TODO
+    }
+
+    private bool ResolveIsSupportGiven(GivesSupport decision, World world, Decisions decisions)
+    {
+        bool progress = false;
+
+        // Support is cut when a unit moves into the supporting unit's province with nonzero
+        // attack strength. Support is given when there is known to be no such unit.
+        bool potentialNonzeroAttack = false;
+        foreach (MoveOrder cut in decision.Cuts)
+        {
+            AttackStrength attack = decisions.AttackStrength[cut];
+            progress |= ResolveDecision(attack, world, decisions);
+
+            // If at least one attack has a nonzero minimum, the support decision can be resolved
+            // to false.
+            if (attack.MinValue > 0)
+            {
+                progress |= decision.Update(false);
+                return progress;
+            }
+
+            // If at least one attack has a nonzero maximum, the support decision can't be resolved
+            // to true.
+            if (attack.MaxValue > 0)
+            {
+                potentialNonzeroAttack = true;
+            }
+        }
+
+        // Support is also cut if the unit is dislodged.
+        IsDislodged dislodge = decisions.IsDislodged[decision.Order.Unit];
+        progress |= ResolveDecision(dislodge, world, decisions);
+        if (dislodge.Outcome == true)
+        {
+            progress |= decision.Update(false);
+            return progress;
+        }
+
+        // If no attack has potentially nonzero attack strength, and the dislodge decision is
+        // resolved to false, then the support is given.
+        if (!potentialNonzeroAttack && dislodge.Outcome == false)
+        {
+            progress |= decision.Update(true);
+            return progress;
+        }
+
+        // Otherwise, the support remains undecided.
+        return progress;
+    }
+
+    private bool ResolveHoldStrength(HoldStrength decision, World world, Decisions decisions)
+    {
+        bool progress = false;
+
+        // If no unit is in the province, the hold strength is zero.
+        if (decision.Order == null)
+        {
+            progress |= decision.Update(0, 0);
+            return progress;
+        }
+
+        // If a unit with a move order is in the province, the strength depends on the move success.
+        if (decision.Order is MoveOrder move)
+        {
+            DoesMove moves = decisions.DoesMove[move];
+            progress |= ResolveDecision(moves, world, decisions);
+            progress |= decision.Update(
+                moves.Outcome != false ? 0 : 1,
+                moves.Outcome == true ? 0 : 1);
+            return progress;
+        }
+        // If a unit without a move order is in the province, add up the supports.
+        else
+        {
+            int min = 1;
+            int max = 1;
+            foreach (SupportHoldOrder support in decision.Supports)
+            {
+                GivesSupport givesSupport = decisions.GivesSupport[support];
+                progress |= ResolveDecision(givesSupport, world, decisions);
+                if (givesSupport.Outcome == true) min += 1;
+                if (givesSupport.Outcome != false) max += 1;
+            }
+            progress |= decision.Update(min, max);
+            return progress;
+        }
+    }
+
+    private bool ResolveAttackStrength(AttackStrength decision, World world, Decisions decisions)
+    {
+        bool progress = false;
+
+        // If there is no path, the attack strength is zero.
+        var hasPath = decisions.HasPath[decision.Order];
+        progress |= ResolveDecision(hasPath, world, decisions);
+        if (hasPath.Outcome == false)
+        {
+            progress |= decision.Update(0, 0);
+            return progress;
+        }
+
+        // If there is a head to head battle, a unit at the destination that isn't moving away, or
+        // a unit at the destination that will fail to move away, then the attacking unit will have
+        // to dislodge it.
+        UnitOrder? destOrder = decisions.HoldStrength[decision.Order.Location.Province].Order;
+        DoesMove? destMoveAway = destOrder is MoveOrder moveAway
+            ? decisions.DoesMove[moveAway]
+            : null;
+        if (destMoveAway != null)
+        {
+            progress |= ResolveDecision(destMoveAway, world, decisions);
+        }
+        if (// In any case here, there will have to be a unit at the destination with an order,
+            // which means that destOrder will have to be populated. Including this in the if
+            //condition lets the compiler know it won't be null in the if block.
+            destOrder != null
+            && (// Is head to head
+                decision.OpposingMove != null
+                // Is not moving away
+                || destMoveAway == null
+                // Is failing to move away
+                || destMoveAway.Outcome == false))
+        {
+            Power destPower = destOrder.Unit.Power;
+            if (decision.Order.Unit.Power == destPower)
+            {
+                // Cannot dislodge own unit.
+                progress |= decision.Update(0, 0);
+                return progress;
+            }
+            else
+            {
+                // Supports won't help to dislodge units of the same power as the support.
+                int min = 1;
+                int max = 1;
+                foreach (SupportMoveOrder support in decision.Supports)
+                {
+                    if (support.Unit.Power == destPower) continue;
+                    GivesSupport givesSupport = decisions.GivesSupport[support];
+                    progress |= ResolveDecision(givesSupport, world, decisions);
+                    if (givesSupport.Outcome == true) min += 1;
+                    if (givesSupport.Outcome != false) max += 1;
+                }
+                progress |= decision.Update(min, max);
+                return progress;
+            }
+        }
+        else if (destMoveAway != null && destMoveAway.Outcome == null)
+        {
+            // If the unit at the destination has an undecided move order, then the minimum tracks
+            // the case where it doesn't move and the attack strength is mitigated by supports not
+            // helping to dislodge units of the same power as the support. The maximum tracks the
+            // case where it does move and the attack strength is unmitigated.
+            Power destPower = destMoveAway.Order.Unit.Power;
+            int min = 1;
+            int max = 1;
+            foreach (SupportMoveOrder support in decision.Supports)
+            {
+                GivesSupport givesSupport = decisions.GivesSupport[support];
+                progress |= ResolveDecision(givesSupport, world, decisions);
+                if (support.Unit.Power != destPower && givesSupport.Outcome == true) min += 1;
+                if (givesSupport.Outcome != false) max += 1;
+            }
+            // Force min to zero in case of an attempt to disloge a unit of the same power.
+            if (decision.Order.Unit.Power == destPower) min = 0;
+            progress |= decision.Update(min, max);
+            return progress;
+        }
+        else
+        {
+            // If the unit at the destination is going somewhere else, then attack strength
+            // includes all supports from all powers.
+            int min = 1;
+            int max = 1;
+            foreach (SupportMoveOrder support in decision.Supports)
+            {
+                GivesSupport givesSupport = decisions.GivesSupport[support];
+                progress |= ResolveDecision(givesSupport, world, decisions);
+                if (givesSupport.Outcome == true) min += 1;
+                if (givesSupport.Outcome != false) max += 1;
+            }
+            progress |= decision.Update(min, max);
+            return progress;
+        }
+    }
+
+    private bool ResolveDefendStrength(DefendStrength decision, World world, Decisions decisions)
+    {
+        bool progress = false;
+
+        // The defend strength is equal to one plus, at least, the number of known successful
+        // supports, and at most, also the unresolved supports were they to resolve to successes.
+        int min = 1;
+        int max = 1;
+        foreach (SupportMoveOrder support in decision.Supports)
+        {
+            GivesSupport givesSupport = decisions.GivesSupport[support];
+            progress |= ResolveDecision(givesSupport, world, decisions);
+            if (givesSupport.Outcome == true) min += 1;
+            if (givesSupport.Outcome != false) max += 1;
+        }
+        progress |= decision.Update(min, max);
+
+        return progress;
+    }
+
+    private bool ResolvePreventStrength(PreventStrength decision, World world, Decisions decisions)
+    {
+        bool progress = false;
+
+        // If there is no path, the prevent strength is zero.
+        var hasPath = decisions.HasPath[decision.Order];
+        progress |= ResolveDecision(hasPath, world, decisions);
+        if (hasPath.Outcome == false)
+        {
+            progress |= decision.Update(0, 0);
+            return progress;
+        }
+
+        // If there's a head to head battle and the opposing unit succeeds in moving, the prevent
+        // strength is zero.
+        if (decision.OpposingMove != null
+            && decisions.DoesMove[decision.OpposingMove].Outcome == true)
+        {
+            progress |= decision.Update(0, 0);
+            return progress;
+        }
+
+        // In all other cases, the prevent strength is equal to one plus, at least, the number of
+        // known successful supports, and at most, also the unresolved supports were they to
+        // resolve to successes.
+        int min = 1;
+        int max = 1;
+        foreach (SupportMoveOrder support in decision.Supports)
+        {
+            GivesSupport givesSupport = decisions.GivesSupport[support];
+            progress |= ResolveDecision(givesSupport, world, decisions);
+            if (givesSupport.Outcome == true) min += 1;
+            if (givesSupport.Outcome != false) max += 1;
+        }
+
+        // The minimum stays at zero if the path or head to head move decisions are unresolved, as
+        // they may resolve to one of the conditions above that forces the prevent strength to zero.
+        if (!hasPath.Resolved
+            || (decision.OpposingMove != null
+                && !decisions.DoesMove[decision.OpposingMove].Resolved))
+        {
+            min = 0;
+        }
+
+        progress |= decision.Update(min, max);
+
+        return progress;
+    }
+
+    private bool ResolveDoesUnitMove(DoesMove decision, World world, Decisions decisions)
+    {
+        bool progress = false;
+
+        // Resolve the move's attack strength.
+        AttackStrength attack = decisions.AttackStrength[decision.Order];
+        progress |= ResolveDecision(attack, world, decisions);
+
+        // In a head to head battle, the threshold for the attack strength to beat is the opposing
+        // defend strength. Outside a head to head battle, the threshold is the destination's hold
+        // strength.
+        NumericAdjudicationDecision defense = decision.OpposingMove != null
+            ? decisions.DefendStrength[decision.OpposingMove]
+            : decisions.HoldStrength[decision.Order.Location.Province];
+        progress |= ResolveDecision(defense, world, decisions);
+
+        // If the defense beats the attack, resolve the move to false.
+        if (attack.MaxValue < defense.MinValue)
+        {
+            progress |= decision.Update(false);
+            return progress;
+        }
+
+        // Check if a competing move will prevent this one.
+        bool beatsAllCompetingMoves = true;
+        foreach (MoveOrder order in decision.Competing)
+        {
+            PreventStrength prevent = decisions.PreventStrength[order];
+            progress |= ResolveDecision(prevent, world, decisions);
+            // If the prevent beats the attack, resolve the move to false.
+            if (attack.MaxValue < prevent.MinValue)
+            {
+                progress |= decision.Update(false);
+                return progress;
+            }
+            // If the attack doesn't beat the prevent, it can't resolve to true.
+            if (attack.MinValue < prevent.MaxValue)
+            {
+                beatsAllCompetingMoves = false;
+            }
+        }
+
+        // If the attack didn't resolve to false because the defense or a prevent beat it, then
+        // attempt to resolve it to true based on whether it beat the defense and all prevents.
+        progress |= decision.Update(attack.MinValue > defense.MaxValue && beatsAllCompetingMoves);
+        return progress;
     }
 }

@@ -23,4 +23,9 @@ public class SupportMoveOrder : SupportOrder
         this.Season = season;
         this.Location = location;
     }
+
+    public bool IsSupportFor(MoveOrder move)
+        => this.Target == move.Unit
+        && this.Season == move.Season
+        && this.Location == move.Location;
 }

@@ -21,4 +21,13 @@ public interface IPhaseAdjudicator
     /// result for the illegal order and a valid result for the replacement order.
     /// </returns>
     public List<OrderValidation> ValidateOrders(World world, List<Order> orders);
+
+    /// <summary>
+    /// Given a list of valid orders, adjudicate the success and failure of the orders. The world
+    /// will be updated with new seasons and unit positions and returned alongside the adjudication
+    /// results.
+    /// </summary>
+    public (List<OrderAdjudication> results, World updated) AdjudicateOrders(
+        World world,
+        List<Order> orders);
 }

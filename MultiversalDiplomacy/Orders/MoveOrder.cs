@@ -23,4 +23,10 @@ public class MoveOrder : UnitOrder
         this.Season = season;
         this.Location = location;
     }
+
+    public bool IsOpposing(MoveOrder other)
+        => this.Season == other.Unit.Season
+        && other.Season == this.Unit.Season
+        && this.Location.Province == other.Unit.Location.Province
+        && other.Location.Province == this.Unit.Location.Province;
 }
