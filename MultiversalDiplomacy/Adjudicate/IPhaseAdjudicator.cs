@@ -23,11 +23,32 @@ public interface IPhaseAdjudicator
     public List<OrderValidation> ValidateOrders(World world, List<Order> orders);
 
     /// <summary>
-    /// Given a list of valid orders, adjudicate the success and failure of the orders. The world
-    /// will be updated with new seasons and unit positions and returned alongside the adjudication
-    /// results.
+    /// Given a list of valid orders, adjudicate the success and failure of the orders. The kinds
+    /// of adjudication decisions returned depends on the phase adjudicator.
     /// </summary>
-    public (List<OrderAdjudication> results, World updated) AdjudicateOrders(
-        World world,
-        List<Order> orders);
+    /// <param name="world">The global game state.</param>
+    /// <param name="orders">
+    /// Orders to adjudicate. The order list should contain only valid orders, as validated by
+    /// <see cref="ValidateOrders"/>, and should contain exactly one order for every unit able to
+    /// be ordered.
+    /// </param>
+    /// <returns>
+    /// A list of adjudication decicions. The decision types will be specific to the phase
+    /// adjudicator and should be comprehensible to that adjudicator's <see cref="Update"/> method.
+    /// </returns>
+    public List<AdjudicationDecision> AdjudicateOrders(World world, List<Order> orders);
+
+    /// <summary>
+    /// Given a list of adjudications, update the world according to the adjudication results.
+    /// </summary>
+    /// <param name="world">The global game state.</param>
+    /// <param name="decisions">
+    /// The results of adjudication. Like <see cref="AdjudicateOrders"/>, all objects to be updated
+    /// should have a relevant adjudication. The adjudication types will be specific to the phase
+    /// adjudicator.
+    /// </param>
+    /// <returns>
+    /// A new copy of the world, updated according to the adjudication.
+    /// </returns>
+    public World UpdateWorld(World world, List<AdjudicationDecision> decisions);
 }

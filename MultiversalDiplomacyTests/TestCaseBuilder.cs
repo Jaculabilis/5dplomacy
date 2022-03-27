@@ -161,6 +161,7 @@ public class TestCaseBuilder
     private List<Order> OrderList;
     private Season Season;
     public List<OrderValidation>? ValidationResults { get; private set; }
+    public List<AdjudicationDecision>? AdjudicationResults { get; private set; }
 
     /// <summary>
     /// Create a test case builder that will operate on a world.
@@ -172,6 +173,7 @@ public class TestCaseBuilder
         this.Orders = new(this.OrderList);
         this.Season = season ?? this.World.Seasons.First();
         this.ValidationResults = null;
+        this.AdjudicationResults = null;
     }
 
     /// <summary>
@@ -223,6 +225,32 @@ public class TestCaseBuilder
     {
         this.ValidationResults = adjudicator.ValidateOrders(this.World, this.Orders.ToList());
         return this.ValidationResults;
+    }
+
+    public List<AdjudicationDecision> AdjudicateOrders(IPhaseAdjudicator adjudicator)
+    {
+        if (this.ValidationResults == null)
+        {
+            throw new InvalidOperationException("Cannot adjudicate before validation");
+        }
+
+        List<Order> orders = this.ValidationResults
+            .Where(validation => validation.Valid)
+            .Select(validation => validation.Order)
+            .ToList();
+        this.AdjudicationResults = adjudicator.AdjudicateOrders(this.World, orders);
+        return this.AdjudicationResults;
+    }
+
+    public World UpdateWorld(IPhaseAdjudicator adjudicator)
+    {
+        if (this.AdjudicationResults == null)
+        {
+            throw new InvalidOperationException("Cannot update before adjudication");
+        }
+
+        this.World = adjudicator.UpdateWorld(this.World, this.AdjudicationResults);
+        return this.World;
     }
 
     private class PowerContext : IPowerContext

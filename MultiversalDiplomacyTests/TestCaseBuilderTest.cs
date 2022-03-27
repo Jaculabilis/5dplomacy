@@ -1,4 +1,5 @@
 using MultiversalDiplomacy.Adjudicate;
+using MultiversalDiplomacy.Adjudicate.Decision;
 using MultiversalDiplomacy.Model;
 using MultiversalDiplomacy.Orders;
 
@@ -117,7 +118,7 @@ class TestCaseBuilderTest
     [Test]
     public void BuilderProvidesReferencesForValidation()
     {
-        IPhaseAdjudicator rubberStamp = new TestAdjudicator(TestAdjudicator.RubberStamp);
+        IPhaseAdjudicator rubberStamp = new TestAdjudicator(validate: TestAdjudicator.RubberStamp);
 
         TestCaseBuilder setup = new TestCaseBuilder(World.WithStandardMap().WithInitialSeason());
         setup["Germany"]
@@ -133,13 +134,13 @@ class TestCaseBuilderTest
             Is.EqualTo(setup.World.GetLand("Mun")),
             "Wrong unit");
 
-        Assert.That<OrderValidation>(
-            () => orderMun.Validation,
+        Assert.That(
+            code: () => _ = orderMun.Validation,
             Throws.Exception,
             "Validation property should be inaccessible before validation actually happens");
         setup.ValidateOrders(rubberStamp);
-        Assert.That<OrderValidation>(
-            () => orderMun.Validation,
+        Assert.That(
+            code: () => _ = orderMun.Validation,
             Throws.Nothing,
             "Validation property should be accessible after validation");
 
@@ -155,5 +156,61 @@ class TestCaseBuilderTest
             orderMun.Validation.Reason,
             Is.EqualTo(ValidationReason.Valid),
             "Unexpected validation reason");
+    }
+
+    public void BuilderProvidesReferencesForAdjudication()
+    {
+        IPhaseAdjudicator rubberStamp = new TestAdjudicator(
+            validate: TestAdjudicator.RubberStamp,
+            adjudicate: TestAdjudicator.NoMoves);
+
+        TestCaseBuilder setup = new TestCaseBuilder(World.WithStandardMap().WithInitialSeason());
+        setup["Germany"]
+            .Army("Mun").Holds().GetReference(out var orderMun);
+
+        Assert.That(
+            code: () => _ = orderMun.Adjudications,
+            Throws.Exception,
+            "Adjudication property should be inaccessible before validation");
+        Assert.That(
+            code: () => _ = orderMun.Retreat,
+            Throws.Exception,
+            "Retreat property should be inaccessible before validation");
+
+        setup.ValidateOrders(rubberStamp);
+        Assert.That(
+            code: () => _ = orderMun.Adjudications,
+            Throws.Exception,
+            "Adjudication property should be inaccessible before adjudication");
+        Assert.That(
+            code: () => _ = orderMun.Retreat,
+            Throws.Exception,
+            "Retreat property should be inaccessible before adjudication");
+
+        var decisions = setup.AdjudicateOrders(rubberStamp);
+        Assert.That(
+            code: () => _ = orderMun.Adjudications,
+            Throws.Nothing,
+            "Adjudication property should be accessible after adjudication");
+        Assert.That(
+            code: () => _ = orderMun.Retreat,
+            Throws.Nothing,
+            "Retreat property should be accessible after validation");
+
+        Assert.That(orderMun.Retreat, Is.Null, "Noop adjudicator shouldn't cause retreats");
+        Assert.That(
+            orderMun.Adjudications.Count,
+            Is.EqualTo(1),
+            "Unexpected number of adjudications");
+        AdjudicationDecision decision = orderMun.Adjudications.First();
+        Assert.That(decision.Resolved, Is.True, "Unexpected unresolved decision");
+        Assert.That(
+            decision,
+            Is.AssignableTo<IsDislodged>(),
+            "Noop adjudicator should provide a dislodge decision for a hold");
+        CollectionAssert.Contains(
+            decisions,
+            decision,
+            "Expected the adjudicated decision to be provided by the order reference");
     }
 }

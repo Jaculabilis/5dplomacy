@@ -17,7 +17,7 @@ public class DATC_A
         setup["England"]
             .Fleet("North Sea").MovesTo("Picardy").GetReference(out var order);
 
-        setup.ValidateOrders(new MovementPhaseAdjudicator());
+        setup.ValidateOrders(MovementPhaseAdjudicator.Instance);
 
         Assert.That(order.Validation, Is.Invalid(ValidationReason.UnreachableDestination));
     }
@@ -57,7 +57,7 @@ public class DATC_A
         setup["Germany"]
             .Fleet("Kiel").MovesTo("Kiel").GetReference(out var order);
 
-        setup.ValidateOrders(new MovementPhaseAdjudicator());
+        setup.ValidateOrders(MovementPhaseAdjudicator.Instance);
 
         Assert.That(order.Validation, Is.Invalid(ValidationReason.DestinationMatchesOrigin));
     }
@@ -75,7 +75,7 @@ public class DATC_A
                 .Fleet("London").MovesTo("Yorkshire")
                 .Army("Wales").Supports.Fleet("London").MoveTo("Yorkshire");
 
-        setup.ValidateOrders(new MovementPhaseAdjudicator());
+        setup.ValidateOrders(MovementPhaseAdjudicator.Instance);
 
         Assert.That(orderNth.Validation, Is.Invalid(ValidationReason.DestinationMatchesOrigin));
         Assert.That(orderYor.Validation, Is.Invalid(ValidationReason.DestinationMatchesOrigin));
@@ -91,7 +91,7 @@ public class DATC_A
             ["Germany"]
                 .Fleet("London", powerName: "England").MovesTo("North Sea").GetReference(out var order);
 
-        setup.ValidateOrders(new MovementPhaseAdjudicator());
+        setup.ValidateOrders(MovementPhaseAdjudicator.Instance);
 
         Assert.That(order.Validation, Is.Invalid(ValidationReason.InvalidUnitForPower));
     }
@@ -105,7 +105,7 @@ public class DATC_A
                 .Fleet("London").MovesTo("Belgium")
                 .Fleet("North Sea").Convoys.Army("London").To("Belgium").GetReference(out var order);
 
-        setup.ValidateOrders(new MovementPhaseAdjudicator());
+        setup.ValidateOrders(MovementPhaseAdjudicator.Instance);
 
         Assert.That(order.Validation, Is.Invalid(ValidationReason.InvalidOrderTypeForUnit));
     }
@@ -121,7 +121,7 @@ public class DATC_A
             ["Austria"]
                 .Fleet("Trieste").Supports.Fleet("Trieste").Hold().GetReference(out var order);
 
-        setup.ValidateOrders(new MovementPhaseAdjudicator());
+        setup.ValidateOrders(MovementPhaseAdjudicator.Instance);
 
         Assert.That(order.Validation, Is.Invalid(ValidationReason.NoSelfSupport));
 
@@ -136,7 +136,7 @@ public class DATC_A
             ["Italy"]
                 .Fleet("Rome").MovesTo("Venice").GetReference(out var order);
 
-        setup.ValidateOrders(new MovementPhaseAdjudicator());
+        setup.ValidateOrders(MovementPhaseAdjudicator.Instance);
 
         Assert.That(order.Validation, Is.Invalid(ValidationReason.UnreachableDestination));
     }
@@ -152,7 +152,7 @@ public class DATC_A
                 .Army("Apulia").MovesTo("Venice")
                 .Fleet("Rome").Supports.Army("Apulia").MoveTo("Venice").GetReference(out var order);
 
-        setup.ValidateOrders(new MovementPhaseAdjudicator());
+        setup.ValidateOrders(MovementPhaseAdjudicator.Instance);
 
         Assert.That(order.Validation, Is.Invalid(ValidationReason.UnreachableSupport));
 

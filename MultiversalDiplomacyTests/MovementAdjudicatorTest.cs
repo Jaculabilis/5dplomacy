@@ -15,7 +15,7 @@ public class MovementAdjudicatorTest
         setup["Germany"]
             .Army("Mun").Holds().GetReference(out var order);
 
-        setup.ValidateOrders(new MovementPhaseAdjudicator());
+        setup.ValidateOrders(MovementPhaseAdjudicator.Instance);
 
         Assert.That(order.Validation, Is.Valid, "Unexpected validation result");
         Assert.That(order.Replacement, Is.Null, "Unexpected order replacement");
@@ -28,7 +28,7 @@ public class MovementAdjudicatorTest
         setup["Germany"]
             .Army("Mun").MovesTo("Tyr").GetReference(out var order);
 
-        setup.ValidateOrders(new MovementPhaseAdjudicator());
+        setup.ValidateOrders(MovementPhaseAdjudicator.Instance);
 
         Assert.That(order.Validation, Is.Valid, "Unexpected validation result");
         Assert.That(order.Replacement, Is.Null, "Unexpected order replacement");
@@ -41,7 +41,7 @@ public class MovementAdjudicatorTest
         setup["Germany"]
             .Fleet("Nth").Convoys.Army("Hol").To("Lon").GetReference(out var order);
 
-        setup.ValidateOrders(new MovementPhaseAdjudicator());
+        setup.ValidateOrders(MovementPhaseAdjudicator.Instance);
 
         Assert.That(order.Validation, Is.Valid, "Unexpected validation result");
         Assert.That(order.Replacement, Is.Null, "Unexpected order replacement");
@@ -54,7 +54,7 @@ public class MovementAdjudicatorTest
         setup["Germany"]
             .Army("Mun").Supports.Army("Kie").Hold().GetReference(out var order);
 
-        setup.ValidateOrders(new MovementPhaseAdjudicator());
+        setup.ValidateOrders(MovementPhaseAdjudicator.Instance);
 
         Assert.That(order.Validation, Is.Valid, "Unexpected validation result");
         Assert.That(order.Replacement, Is.Null, "Unexpected order replacement");
@@ -67,7 +67,7 @@ public class MovementAdjudicatorTest
         setup["Germany"]
             .Army("Mun").Supports.Army("Kie").MoveTo("Ber").GetReference(out var order);
 
-        setup.ValidateOrders(new MovementPhaseAdjudicator());
+        setup.ValidateOrders(MovementPhaseAdjudicator.Instance);
 
         Assert.That(order.Validation, Is.Valid, "Unexpected validation result");
         Assert.That(order.Replacement, Is.Null, "Unexpected order replacement");

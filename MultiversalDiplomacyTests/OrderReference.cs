@@ -1,4 +1,6 @@
 using MultiversalDiplomacy.Adjudicate;
+using MultiversalDiplomacy.Adjudicate.Decision;
+using MultiversalDiplomacy.Model;
 using MultiversalDiplomacy.Orders;
 
 using NUnit.Framework;
@@ -55,6 +57,45 @@ public class OrderReference<OrderType> where OrderType : Order
                 if (replacementOrder.Any())
                 {
                     return replacementOrder.Single();
+                }
+            }
+            return null;
+        }
+    }
+
+    public List<AdjudicationDecision> Adjudications
+    {
+        get
+        {
+            if (this.Builder.AdjudicationResults == null)
+            {
+                throw new InvalidOperationException("Adjudication has not been done yet");
+            }
+            var adjudications = this.Builder.AdjudicationResults.Where(ad => ad switch
+            {
+                IsDislodged dislodged => dislodged.Order == this.Order,
+                DoesMove moves => moves.Order == this.Order,
+                _ => false,
+            }).ToList();
+            return adjudications;
+        }
+    }
+
+    public RetreatingUnit? Retreat
+    {
+        get
+        {
+            if (this.Builder.AdjudicationResults == null)
+            {
+                throw new InvalidOperationException("Adjudication has not been done yet");
+            }
+            if (this.Order is UnitOrder unitOrder)
+            {
+                var retreat = this.Builder.World.RetreatingUnits.Where(
+                    ru => ru.Unit == unitOrder.Unit);
+                if (retreat.Any())
+                {
+                    return retreat.Single();
                 }
             }
             return null;

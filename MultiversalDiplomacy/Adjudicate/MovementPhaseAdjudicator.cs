@@ -9,120 +9,6 @@ namespace MultiversalDiplomacy.Adjudicate;
 /// </summary>
 public class MovementPhaseAdjudicator : IPhaseAdjudicator
 {
-    private class Decisions
-    {
-        public Dictionary<Unit, IsDislodged> IsDislodged { get; }
-        public Dictionary<MoveOrder, HasPath> HasPath { get; }
-        public Dictionary<SupportOrder, GivesSupport> GivesSupport { get; }
-        public Dictionary<Province, HoldStrength> HoldStrength { get; }
-        public Dictionary<MoveOrder, AttackStrength> AttackStrength { get; }
-        public Dictionary<MoveOrder, DefendStrength> DefendStrength { get; }
-        public Dictionary<MoveOrder, PreventStrength> PreventStrength { get; }
-        public Dictionary<MoveOrder, DoesMove> DoesMove { get; }
-
-        public List<AdjudicationDecision> UnresolvedDecisions { get; }
-
-        public Decisions(List<Order> orders)
-        {
-            this.IsDislodged = new();
-            this.HasPath = new();
-            this.GivesSupport = new();
-            this.HoldStrength = new();
-            this.AttackStrength = new();
-            this.DefendStrength = new();
-            this.PreventStrength = new();
-            this.DoesMove = new();
-
-            foreach (UnitOrder order in orders.Cast<UnitOrder>())
-            {
-                // Create a dislodge decision for this unit.
-                List<MoveOrder> incoming = orders
-                    .OfType<MoveOrder>()
-                    .Where(move => move.Location.Province == order.Unit.Location.Province)
-                    .ToList();
-                this.IsDislodged[order.Unit] = new(order, incoming);
-
-                // Ensure a hold strength decision exists.
-                Province province = order.Unit.Location.Province;
-                if (!this.HoldStrength.ContainsKey(province))
-                {
-                    this.HoldStrength[province] = new(province, order);
-                }
-
-                if (order is MoveOrder move)
-                {
-                    // Find supports corresponding to this move.
-                    List<SupportMoveOrder> supports = orders
-                        .OfType<SupportMoveOrder>()
-                        .Where(support => support.IsSupportFor(move))
-                        .ToList();
-
-                    // Determine if this move is a head-to-head battle.
-                    MoveOrder? opposingMove = orders
-                        .OfType<MoveOrder>()
-                        .FirstOrDefault(other => other != null && other.IsOpposing(move), null);
-
-                    // Find competing moves.
-                    List<MoveOrder> competing = orders
-                        .OfType<MoveOrder>()
-                        .Where(other => other.Location.Province == move.Location.Province)
-                        .ToList();
-
-                    // Create the move-related decisions.
-                    this.HasPath[move] = new(move);
-                    this.AttackStrength[move] = new(move, supports, opposingMove);
-                    this.DefendStrength[move] = new(move, supports);
-                    this.PreventStrength[move] = new(move, supports, opposingMove);
-                    this.DoesMove[move] = new(move, opposingMove, competing);
-
-                    // Ensure a hold strength decision exists for the destination.
-                    Province dest = move.Location.Province;
-                    if (!this.HoldStrength.ContainsKey(dest))
-                    {
-                        this.HoldStrength[dest] = new(dest);
-                    }
-                }
-                else if (order is SupportOrder support)
-                {
-                    // Create the support decision.
-                    this.GivesSupport[support] = new(support, incoming);
-
-                    // Ensure a hold strength decision exists for the target's province.
-                    Province target = support.Target.Location.Province;
-                    if (!this.HoldStrength.ContainsKey(target))
-                    {
-                        this.HoldStrength[target] = new(target);
-                    }
-
-                    if (support is SupportHoldOrder supportHold)
-                    {
-                        this.HoldStrength[target].Supports.Add(supportHold);
-                    }
-                    else if (support is SupportMoveOrder supportMove)
-                    {
-                        // Ensure a hold strength decision exists for the target's destination.
-                        Province dest = supportMove.Location.Province;
-                        if (!this.HoldStrength.ContainsKey(dest))
-                        {
-                            this.HoldStrength[dest] = new(dest);
-                        }
-                    }
-                }
-            }
-
-            this.UnresolvedDecisions = new List<AdjudicationDecision>()
-                .Concat(this.IsDislodged.Values)
-                .Concat(this.HasPath.Values)
-                .Concat(this.GivesSupport.Values)
-                .Concat(this.HoldStrength.Values)
-                .Concat(this.AttackStrength.Values)
-                .Concat(this.DefendStrength.Values)
-                .Concat(this.PreventStrength.Values)
-                .Concat(this.DoesMove.Values)
-                .ToList();
-        }
-    }
-
     public static IPhaseAdjudicator Instance { get; } = new MovementPhaseAdjudicator();
 
     public List<OrderValidation> ValidateOrders(World world, List<Order> orders)
@@ -377,35 +263,38 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
         return validationResults;
     }
 
-    public (List<OrderAdjudication> results, World updated) AdjudicateOrders(
-        World world,
-        List<Order> orders)
+    public List<AdjudicationDecision> AdjudicateOrders(World world, List<Order> orders)
     {
         // Define all adjudication decisions to be made.
-        Decisions decisions = new Decisions(orders);
+        MovementDecisions decisions = new(orders);
+
+        List<AdjudicationDecision> unresolvedDecisions = decisions.Values.ToList();
 
         // Adjudicate all decisions.
         bool progress = false;
         do
         {
             progress = false;
-            foreach (AdjudicationDecision decision in decisions.UnresolvedDecisions.ToList())
+            foreach (AdjudicationDecision decision in unresolvedDecisions.ToList())
             {
                 progress |= ResolveDecision(decision, world, decisions);
-                if (decision.Resolved) decisions.UnresolvedDecisions.Remove(decision);
+                if (decision.Resolved) unresolvedDecisions.Remove(decision);
             }
         } while (progress);
 
-        if (decisions.UnresolvedDecisions.Any())
+        if (unresolvedDecisions.Any())
         {
             throw new ApplicationException("Some orders not resolved!");
         }
 
-        List<OrderAdjudication> adjudications = new();
+        return decisions.Values.ToList();
+    }
 
-        // All orders other than move orders are hold orders with extra steps.
-        ILookup<bool, Order> moveOrders = orders.ToLookup(order => order is MoveOrder);
-        List<Order> nonMoveOrders = moveOrders[false].ToList();
+    public World UpdateWorld(World world, List<AdjudicationDecision> decisions)
+    {
+        Dictionary<MoveOrder, DoesMove> moves = decisions
+            .OfType<DoesMove>()
+            .ToDictionary(dm => dm.Order);
 
         // All moves to a particular season in a single phase result in the same future. Keep a
         // record of when a future season has been created.
@@ -413,34 +302,35 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
         List<Unit> createdUnits = new();
         List<RetreatingUnit> retreats = new();
 
-        // For each move order with a successful does-move decision, ensure the future exists and
-        // progress the unit to the future.
-        foreach (MoveOrder move in moveOrders[true].Cast<MoveOrder>())
+        // Successful move orders result in the unit moving to the destination and creating a new
+        // future, while unsuccessful move orders are processed the same way as non-move orders.
+        foreach (DoesMove doesMove in moves.Values)
         {
-            DoesMove doesMove = decisions.DoesMove[move];
             if (doesMove.Outcome == true)
             {
-                if (!createdFutures.TryGetValue(move.Season, out Season? future))
+                if (!createdFutures.TryGetValue(doesMove.Order.Season, out Season? future))
                 {
-                    // A timeline doesn't fork unless it already has a continuation.
-                    future = move.Season.Futures.Any()
-                        ? move.Season.MakeNext()
-                        : move.Season.MakeFork();
-                    createdFutures[move.Season] = future;
+                    // A timeline that doesn't have a future yet simply continues. Otherwise, it forks.
+                    future = !doesMove.Order.Season.Futures.Any()
+                        ? doesMove.Order.Season.MakeNext()
+                        : doesMove.Order.Season.MakeFork();
+                    createdFutures[doesMove.Order.Season] = future;
                 }
-                createdUnits.Add(move.Unit.Next(move.Location, future));
+                createdUnits.Add(doesMove.Order.Unit.Next(doesMove.Order.Location, future));
             }
-            else
-            {
-                // If the move order failed, the moving unit will stay put, which puts it in the
-                // same bucket as the hold orders.
-                nonMoveOrders.Add(move);
-            }
-            adjudications.Add(new(move, doesMove.Outcome == true));
         }
 
-        foreach (UnitOrder order in nonMoveOrders.Cast<UnitOrder>())
+        // Process unsuccessful moves, all holds, and all supports.
+        foreach (IsDislodged isDislodged in decisions.OfType<IsDislodged>())
         {
+            UnitOrder order = isDislodged.Order;
+
+            // Skip the move orders that were processed above.
+            if (order is MoveOrder move && moves[move].Outcome == true)
+            {
+                continue;
+            }
+
             if (!createdFutures.TryGetValue(order.Unit.Season, out Season? future))
             {
                 // Any unit given an order is, by definition, at the front of a timeline.
@@ -449,7 +339,6 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
             }
 
             // For each stationary unit that wasn't dislodged, continue it into the future.
-            IsDislodged isDislodged = decisions.IsDislodged[order.Unit];
             if (isDislodged.Outcome == false)
             {
                 createdUnits.Add(order.Unit.Next(order.Unit.Location, future));
@@ -464,15 +353,6 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
                 RetreatingUnit retreat = new(order.Unit, validRetreats);
                 retreats.Add(retreat);
             }
-
-            if (order is SupportOrder support)
-            {
-                adjudications.Add(new(support, decisions.GivesSupport[support].Outcome == true));
-            }
-            else
-            {
-                adjudications.Add(new(order, isDislodged.Outcome == false));
-            }
         }
 
         // TODO provide more structured information about order outcomes
@@ -482,10 +362,13 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
             .WithUnits(world.Units.Concat(createdUnits))
             .WithRetreats(retreats);
 
-        return (adjudications, updated);
+        return updated;
     }
 
-    private bool ResolveDecision(AdjudicationDecision decision, World world, Decisions decisions)
+    private bool ResolveDecision(
+        AdjudicationDecision decision,
+        World world,
+        MovementDecisions decisions)
         => decision.Resolved ? false : decision switch
         {
             IsDislodged d => ResolveIsUnitDislodged(d, world, decisions),
@@ -499,7 +382,10 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
             _ => throw new NotSupportedException($"Unknown decision type: {decision.GetType()}")
         };
 
-    private bool ResolveIsUnitDislodged(IsDislodged decision, World world, Decisions decisions)
+    private bool ResolveIsUnitDislodged(
+        IsDislodged decision,
+        World world,
+        MovementDecisions decisions)
     {
         bool progress = false;
 
@@ -557,7 +443,10 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
         return progress;
     }
 
-    private bool ResolveDoesMoveHavePath(HasPath decision, World world, Decisions decisions)
+    private bool ResolveDoesMoveHavePath(
+        HasPath decision,
+        World world,
+        MovementDecisions decisions)
     {
         bool progress= false;
 
@@ -583,7 +472,10 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
         throw new NotImplementedException(); // TODO
     }
 
-    private bool ResolveIsSupportGiven(GivesSupport decision, World world, Decisions decisions)
+    private bool ResolveIsSupportGiven(
+        GivesSupport decision,
+        World world,
+        MovementDecisions decisions)
     {
         bool progress = false;
 
@@ -632,7 +524,10 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
         return progress;
     }
 
-    private bool ResolveHoldStrength(HoldStrength decision, World world, Decisions decisions)
+    private bool ResolveHoldStrength(
+        HoldStrength decision,
+        World world,
+        MovementDecisions decisions)
     {
         bool progress = false;
 
@@ -670,7 +565,10 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
         }
     }
 
-    private bool ResolveAttackStrength(AttackStrength decision, World world, Decisions decisions)
+    private bool ResolveAttackStrength(
+        AttackStrength decision,
+        World world,
+        MovementDecisions decisions)
     {
         bool progress = false;
 
@@ -768,7 +666,10 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
         }
     }
 
-    private bool ResolveDefendStrength(DefendStrength decision, World world, Decisions decisions)
+    private bool ResolveDefendStrength(
+        DefendStrength decision,
+        World world,
+        MovementDecisions decisions)
     {
         bool progress = false;
 
@@ -788,7 +689,10 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
         return progress;
     }
 
-    private bool ResolvePreventStrength(PreventStrength decision, World world, Decisions decisions)
+    private bool ResolvePreventStrength(
+        PreventStrength decision,
+        World world,
+        MovementDecisions decisions)
     {
         bool progress = false;
 
@@ -837,7 +741,10 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
         return progress;
     }
 
-    private bool ResolveDoesUnitMove(DoesMove decision, World world, Decisions decisions)
+    private bool ResolveDoesUnitMove(
+        DoesMove decision,
+        World world,
+        MovementDecisions decisions)
     {
         bool progress = false;
 

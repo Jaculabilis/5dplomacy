@@ -1,4 +1,4 @@
-namespace MultiversalDiplomacy.Adjudicate.Decision;
+namespace MultiversalDiplomacy.Adjudicate;
 
 /// <summary>
 /// Base class for adjudication decisions. The decision-based adjudication algorithm is based
