@@ -65,7 +65,9 @@ public class MovementDecisions
                 // Find competing moves.
                 List<MoveOrder> competing = orders
                     .OfType<MoveOrder>()
-                    .Where(other => other.Location.Province == move.Location.Province)
+                    .Where(other
+                        => other != move
+                        && other.Location.Province == move.Location.Province)
                     .ToList();
 
                 // Create the move-related decisions.

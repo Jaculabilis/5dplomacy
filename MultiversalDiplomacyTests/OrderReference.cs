@@ -75,6 +75,10 @@ public class OrderReference<OrderType> where OrderType : Order
             {
                 IsDislodged dislodged => dislodged.Order == this.Order,
                 DoesMove moves => moves.Order == this.Order,
+                GivesSupport supports => supports.Order == this.Order,
+                AttackStrength attack => attack.Order == this.Order,
+                DefendStrength defend => defend.Order == this.Order,
+                PreventStrength prevent => prevent.Order == this.Order,
                 _ => false,
             }).ToList();
             return adjudications;
