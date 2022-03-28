@@ -760,8 +760,8 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
             : decisions.HoldStrength[decision.Order.Location.Province];
         progress |= ResolveDecision(defense, world, decisions);
 
-        // If the defense beats the attack, resolve the move to false.
-        if (attack.MaxValue < defense.MinValue)
+        // If the attack doesn't beat the defense, resolve the move to false.
+        if (attack.MaxValue <= defense.MinValue)
         {
             progress |= decision.Update(false);
             return progress;
@@ -773,14 +773,14 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
         {
             PreventStrength prevent = decisions.PreventStrength[order];
             progress |= ResolveDecision(prevent, world, decisions);
-            // If the prevent beats the attack, resolve the move to false.
-            if (attack.MaxValue < prevent.MinValue)
+            // If attack doesn't beat the prevent, resolve the move to false.
+            if (attack.MaxValue <= prevent.MinValue)
             {
                 progress |= decision.Update(false);
                 return progress;
             }
             // If the attack doesn't beat the prevent, it can't resolve to true.
-            if (attack.MinValue < prevent.MaxValue)
+            if (attack.MinValue <= prevent.MaxValue)
             {
                 beatsAllCompetingMoves = false;
             }

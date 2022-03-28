@@ -1,6 +1,6 @@
 using MultiversalDiplomacy.Adjudicate;
+using MultiversalDiplomacy.Adjudicate.Decision;
 using MultiversalDiplomacy.Model;
-using MultiversalDiplomacy.Orders;
 
 using NUnit.Framework;
 
@@ -119,13 +119,18 @@ public class DATC_A
                 .Army("Venice").MovesTo("Trieste")
                 .Army("Tyrolia").Supports.Army("Venice").MoveTo("Trieste")
             ["Austria"]
-                .Fleet("Trieste").Supports.Fleet("Trieste").Hold().GetReference(out var order);
+                .Fleet("Trieste").Supports.Fleet("Trieste").Hold().GetReference(out var orderTri);
 
         setup.ValidateOrders(MovementPhaseAdjudicator.Instance);
+        Assert.That(orderTri.Validation, Is.Invalid(ValidationReason.NoSelfSupport));
 
-        Assert.That(order.Validation, Is.Invalid(ValidationReason.NoSelfSupport));
-
-        // TODO assert dislodge
+        // The army in Trieste should be dislodged.
+        var adjudications = setup.AdjudicateOrders(MovementPhaseAdjudicator.Instance);
+        // The order reference captures the invalidated order, but the unit is the same.
+        var dislodgeTri = adjudications
+            .OfType<IsDislodged>()
+            .Single(adj => adj.Order.Unit == orderTri.Order.Unit);
+        Assert.That(dislodgeTri.Outcome, Is.True, "Expected F Tri to be dislodged");
     }
 
     [Test]
@@ -147,41 +152,68 @@ public class DATC_A
         TestCaseBuilder setup = new TestCaseBuilder(StandardEmpty);
         setup
             ["Austria"]
-                .Army("Venice").Holds()
+                .Army("Venice").Holds().GetReference(out var orderVen)
             ["Italy"]
                 .Army("Apulia").MovesTo("Venice")
-                .Fleet("Rome").Supports.Army("Apulia").MoveTo("Venice").GetReference(out var order);
+                .Fleet("Rome").Supports.Army("Apulia").MoveTo("Venice").GetReference(out var orderRom);
 
         setup.ValidateOrders(MovementPhaseAdjudicator.Instance);
 
-        Assert.That(order.Validation, Is.Invalid(ValidationReason.UnreachableSupport));
+        // The support of Rome is illegal, because Venice can not be reached from Rome by a fleet.
+        Assert.That(orderRom.Validation, Is.Invalid(ValidationReason.UnreachableSupport));
 
-        // TODO assert dislodge
+        // Venice is not dislodged.
+        setup.AdjudicateOrders(MovementPhaseAdjudicator.Instance);
+        Assert.That(orderVen.Adjudications.OfType<IsDislodged>().Count(), Is.EqualTo(1));
+        Assert.That(orderVen.Adjudications.OfType<IsDislodged>().First().Outcome, Is.False);
     }
 
     [Test]
-    [Ignore("TODO")]
     public void DATC_6_A_11_SimpleBounce()
     {
         TestCaseBuilder setup = new TestCaseBuilder(StandardEmpty);
         setup
             ["Austria"]
-                .Army("Vienna").MovesTo("Tyrolia")
+                .Army("Vienna").MovesTo("Tyrolia").GetReference(out var orderVie)
             ["Italy"]
-                .Army("Venice").MovesTo("Tyrolia");
+                .Army("Venice").MovesTo("Tyrolia").GetReference(out var orderVen);
+
+        setup.ValidateOrders(MovementPhaseAdjudicator.Instance);
+        Assert.That(orderVie.Validation, Is.Valid);
+        Assert.That(orderVen.Validation, Is.Valid);
+
+        var adjudications = setup.AdjudicateOrders(MovementPhaseAdjudicator.Instance);
+        // The two units bounce.
+        Assert.That(orderVie.Adjudications.OfType<DoesMove>().Count(), Is.EqualTo(1));
+        Assert.That(orderVie.Adjudications.OfType<DoesMove>().First().Outcome, Is.False);
+        Assert.That(orderVen.Adjudications.OfType<DoesMove>().Count(), Is.EqualTo(1));
+        Assert.That(orderVen.Adjudications.OfType<DoesMove>().First().Outcome, Is.False);
     }
 
     [Test]
-    [Ignore("TODO")]
     public void DATC_6_A_12_BounceOfThreeUnits()
     {
         TestCaseBuilder setup = new TestCaseBuilder(StandardEmpty);
         setup
             ["Austria"]
-                .Army("Vienna").MovesTo("Tyrolia")
+                .Army("Vienna").MovesTo("Tyrolia").GetReference(out var orderVie)
             ["Germany"]
-                .Army("Munich").MovesTo("Tyrolia")
+                .Army("Munich").MovesTo("Tyrolia").GetReference(out var orderMun)
             ["Italy"]
-                .Army("Venice").MovesTo("Tyrolia");
+                .Army("Venice").MovesTo("Tyrolia").GetReference(out var orderVen);
+
+        var validations = setup.ValidateOrders(MovementPhaseAdjudicator.Instance);
+        Assert.That(orderVie.Validation, Is.Valid);
+        Assert.That(orderMun.Validation, Is.Valid);
+        Assert.That(orderVen.Validation, Is.Valid);
+
+        var adjudications = setup.AdjudicateOrders(MovementPhaseAdjudicator.Instance);
+        // The three units bounce.
+        Assert.That(orderVie.Adjudications.OfType<DoesMove>().Count(), Is.EqualTo(1));
+        Assert.That(orderVie.Adjudications.OfType<DoesMove>().First().Outcome, Is.False);
+        Assert.That(orderMun.Adjudications.OfType<DoesMove>().Count(), Is.EqualTo(1));
+        Assert.That(orderMun.Adjudications.OfType<DoesMove>().First().Outcome, Is.False);
+        Assert.That(orderVen.Adjudications.OfType<DoesMove>().Count(), Is.EqualTo(1));
+        Assert.That(orderVen.Adjudications.OfType<DoesMove>().First().Outcome, Is.False);
     }
 }
