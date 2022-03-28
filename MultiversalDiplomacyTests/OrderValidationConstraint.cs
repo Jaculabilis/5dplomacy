@@ -22,9 +22,16 @@ public class OrderValidationConstraint : Constraint
 
     public override ConstraintResult ApplyTo<TActual>(TActual actual)
     {
-        bool success = actual is OrderValidation validation
-            && validation.Valid == this.valid
-            && validation.Reason == this.expectedReason;
+        bool success = actual switch
+        {
+            OrderReference reference
+                => reference.Validation.Valid == this.valid
+                && reference.Validation.Reason == this.expectedReason,
+            OrderValidation validation
+                => validation.Valid == this.valid
+                && validation.Reason == this.expectedReason,
+            _ => false,
+        };
         return new ConstraintResult(this, actual, success);
     }
 }

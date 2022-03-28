@@ -6,6 +6,11 @@ public abstract class BinaryAdjudicationDecision : AdjudicationDecision
 
     public override bool Resolved => this.Outcome != null;
 
+    public override string ToString()
+    {
+        return $"{this.GetType().Name}={this.Outcome}";
+    }
+
     public bool Update(bool outcome)
     {
         if (this.Outcome == null)
