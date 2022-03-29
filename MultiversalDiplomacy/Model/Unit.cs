@@ -30,6 +30,11 @@ public class Unit
     /// </summary>
     public UnitType Type { get; }
 
+    /// <summary>
+    /// The unit's spatiotemporal location as a province-season tuple.
+    /// </summary>
+    public (Province province, Season season) Point => (this.Location.Province, this.Season);
+
     private Unit(Unit? past, Location location, Season season, Power power, UnitType type)
     {
         this.Past = past;

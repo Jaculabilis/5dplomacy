@@ -584,7 +584,7 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
         // If there is a head to head battle, a unit at the destination that isn't moving away, or
         // a unit at the destination that will fail to move away, then the attacking unit will have
         // to dislodge it.
-        UnitOrder? destOrder = decisions.HoldStrength[decision.Order.Location.Province].Order;
+        UnitOrder? destOrder = decisions.HoldStrength[decision.Order.Point].Order;
         DoesMove? destMoveAway = destOrder is MoveOrder moveAway
             ? decisions.DoesMove[moveAway]
             : null;
@@ -757,7 +757,7 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
         // strength.
         NumericAdjudicationDecision defense = decision.OpposingMove != null
             ? decisions.DefendStrength[decision.OpposingMove]
-            : decisions.HoldStrength[decision.Order.Location.Province];
+            : decisions.HoldStrength[decision.Order.Point];
         progress |= ResolveDecision(defense, world, decisions);
 
         // If the attack doesn't beat the defense, resolve the move to false.

@@ -17,6 +17,11 @@ public class MoveOrder : UnitOrder
     /// </summary>
     public Location Location { get; }
 
+    /// <summary>
+    /// The destination's spatiotemporal location as a province-season tuple.
+    /// </summary>
+    public (Province province, Season season) Point => (this.Location.Province, this.Season);
+
     public MoveOrder(Power power, Unit unit, Season season, Location location)
         : base (power, unit)
     {

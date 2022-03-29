@@ -17,6 +17,11 @@ public class SupportMoveOrder : SupportOrder
     /// </summary>
     public Location Location { get; }
 
+    /// <summary>
+    /// The target's destination's spatiotemporal location as a province-season tuple.
+    /// </summary>
+    public (Province province, Season season) Point => (this.Location.Province, this.Season);
+
     public SupportMoveOrder(Power power, Unit unit, Unit target, Season season, Location location)
         : base(power, unit, target)
     {

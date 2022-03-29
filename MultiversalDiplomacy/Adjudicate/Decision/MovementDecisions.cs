@@ -8,7 +8,7 @@ public class MovementDecisions
     public Dictionary<Unit, IsDislodged> IsDislodged { get; }
     public Dictionary<MoveOrder, HasPath> HasPath { get; }
     public Dictionary<SupportOrder, GivesSupport> GivesSupport { get; }
-    public Dictionary<Province, HoldStrength> HoldStrength { get; }
+    public Dictionary<(Province, Season), HoldStrength> HoldStrength { get; }
     public Dictionary<MoveOrder, AttackStrength> AttackStrength { get; }
     public Dictionary<MoveOrder, DefendStrength> DefendStrength { get; }
     public Dictionary<MoveOrder, PreventStrength> PreventStrength { get; }
@@ -46,8 +46,7 @@ public class MovementDecisions
 
             // Ensure a hold strength decision exists. Overwrite any previous once, since it may
             // have been created without an order by a previous move or support.
-            Province province = order.Unit.Location.Province;
-            this.HoldStrength[province] = new(province, order);
+            this.HoldStrength[order.Unit.Point] = new(order.Unit.Point, order);
 
             if (order is MoveOrder move)
             {
@@ -78,10 +77,9 @@ public class MovementDecisions
                 this.DoesMove[move] = new(move, opposingMove, competing);
 
                 // Ensure a hold strength decision exists for the destination.
-                Province dest = move.Location.Province;
-                if (!this.HoldStrength.ContainsKey(dest))
+                if (!this.HoldStrength.ContainsKey(move.Point))
                 {
-                    this.HoldStrength[dest] = new(dest);
+                    this.HoldStrength[move.Point] = new(move.Point);
                 }
             }
             else if (order is SupportOrder support)
@@ -90,23 +88,21 @@ public class MovementDecisions
                 this.GivesSupport[support] = new(support, incoming);
 
                 // Ensure a hold strength decision exists for the target's province.
-                Province target = support.Target.Location.Province;
-                if (!this.HoldStrength.ContainsKey(target))
+                if (!this.HoldStrength.ContainsKey(support.Target.Point))
                 {
-                    this.HoldStrength[target] = new(target);
+                    this.HoldStrength[support.Target.Point] = new(support.Target.Point);
                 }
 
                 if (support is SupportHoldOrder supportHold)
                 {
-                    this.HoldStrength[target].Supports.Add(supportHold);
+                    this.HoldStrength[support.Target.Point].Supports.Add(supportHold);
                 }
                 else if (support is SupportMoveOrder supportMove)
                 {
                     // Ensure a hold strength decision exists for the target's destination.
-                    Province dest = supportMove.Location.Province;
-                    if (!this.HoldStrength.ContainsKey(dest))
+                    if (!this.HoldStrength.ContainsKey(supportMove.Point))
                     {
-                        this.HoldStrength[dest] = new(dest);
+                        this.HoldStrength[supportMove.Point] = new(supportMove.Point);
                     }
                 }
             }
