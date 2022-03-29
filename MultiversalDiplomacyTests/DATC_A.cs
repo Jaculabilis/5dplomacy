@@ -9,7 +9,7 @@ namespace MultiversalDiplomacyTests;
 
 public class DATC_A
 {
-    private World StandardEmpty { get; } = World.WithStandardMap().WithInitialSeason();
+    private World StandardEmpty { get; } = World.WithStandardMap();
 
     [Test]
     public void DATC_6_A_1_MoveToAnAreaThatIsNotANeighbor()

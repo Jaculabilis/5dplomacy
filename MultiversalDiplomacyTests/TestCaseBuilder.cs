@@ -217,7 +217,7 @@ public class TestCaseBuilder
 
         // Not found
         Unit newUnit = Unit.Build(location, season, power, type);
-        this.World = this.World.WithUnits(this.World.Units.Append(newUnit));
+        this.World = this.World.Update(units: this.World.Units.Append(newUnit));
         return newUnit;
     }
 

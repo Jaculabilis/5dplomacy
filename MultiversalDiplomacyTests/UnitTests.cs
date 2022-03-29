@@ -9,7 +9,7 @@ public class UnitTests
     [Test]
     public void MovementTest()
     {
-        World world = World.WithStandardMap().WithInitialSeason();
+        World world = World.WithStandardMap();
         Location Mun = world.GetLand("Mun"),
             Boh = world.GetLand("Boh"),
             Tyr = world.GetLand("Tyr");

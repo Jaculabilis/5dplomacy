@@ -357,10 +357,10 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
 
         // TODO provide more structured information about order outcomes
 
-        World updated = world
-            .WithSeasons(world.Seasons.Concat(createdFutures.Values))
-            .WithUnits(world.Units.Concat(createdUnits))
-            .WithRetreats(retreats);
+        World updated = world.Update(
+            seasons: world.Seasons.Concat(createdFutures.Values),
+            units: world.Units.Concat(createdUnits),
+            retreats: retreats);
 
         return updated;
     }

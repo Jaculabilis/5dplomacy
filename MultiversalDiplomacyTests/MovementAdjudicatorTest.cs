@@ -11,72 +11,72 @@ public class MovementAdjudicatorTest
     [Test]
     public void Validation_ValidHold()
     {
-        TestCaseBuilder setup = new TestCaseBuilder(World.WithStandardMap().WithInitialSeason());
+        TestCaseBuilder setup = new TestCaseBuilder(World.WithStandardMap());
         setup["Germany"]
             .Army("Mun").Holds().GetReference(out var order);
 
         setup.ValidateOrders(MovementPhaseAdjudicator.Instance);
 
-        Assert.That(order.Validation, Is.Valid, "Unexpected validation result");
+        Assert.That(order, Is.Valid, "Unexpected validation result");
         Assert.That(order.Replacement, Is.Null, "Unexpected order replacement");
     }
 
     [Test]
     public void Validation_ValidMove()
     {
-        TestCaseBuilder setup = new TestCaseBuilder(World.WithStandardMap().WithInitialSeason());
+        TestCaseBuilder setup = new TestCaseBuilder(World.WithStandardMap());
         setup["Germany"]
             .Army("Mun").MovesTo("Tyr").GetReference(out var order);
 
         setup.ValidateOrders(MovementPhaseAdjudicator.Instance);
 
-        Assert.That(order.Validation, Is.Valid, "Unexpected validation result");
+        Assert.That(order, Is.Valid, "Unexpected validation result");
         Assert.That(order.Replacement, Is.Null, "Unexpected order replacement");
     }
 
     [Test]
     public void Validation_ValidConvoy()
     {
-        TestCaseBuilder setup = new TestCaseBuilder(World.WithStandardMap().WithInitialSeason());
+        TestCaseBuilder setup = new TestCaseBuilder(World.WithStandardMap());
         setup["Germany"]
             .Fleet("Nth").Convoys.Army("Hol").To("Lon").GetReference(out var order);
 
         setup.ValidateOrders(MovementPhaseAdjudicator.Instance);
 
-        Assert.That(order.Validation, Is.Valid, "Unexpected validation result");
+        Assert.That(order, Is.Valid, "Unexpected validation result");
         Assert.That(order.Replacement, Is.Null, "Unexpected order replacement");
     }
 
     [Test]
     public void Validation_ValidSupportHold()
     {
-        TestCaseBuilder setup = new TestCaseBuilder(World.WithStandardMap().WithInitialSeason());
+        TestCaseBuilder setup = new TestCaseBuilder(World.WithStandardMap());
         setup["Germany"]
             .Army("Mun").Supports.Army("Kie").Hold().GetReference(out var order);
 
         setup.ValidateOrders(MovementPhaseAdjudicator.Instance);
 
-        Assert.That(order.Validation, Is.Valid, "Unexpected validation result");
+        Assert.That(order, Is.Valid, "Unexpected validation result");
         Assert.That(order.Replacement, Is.Null, "Unexpected order replacement");
     }
 
     [Test]
     public void Validation_ValidSupportMove()
     {
-        TestCaseBuilder setup = new TestCaseBuilder(World.WithStandardMap().WithInitialSeason());
+        TestCaseBuilder setup = new TestCaseBuilder(World.WithStandardMap());
         setup["Germany"]
             .Army("Mun").Supports.Army("Kie").MoveTo("Ber").GetReference(out var order);
 
         setup.ValidateOrders(MovementPhaseAdjudicator.Instance);
 
-        Assert.That(order.Validation, Is.Valid, "Unexpected validation result");
+        Assert.That(order, Is.Valid, "Unexpected validation result");
         Assert.That(order.Replacement, Is.Null, "Unexpected order replacement");
     }
 
     [Test]
     public void Adjudication_Hold()
     {
-        TestCaseBuilder setup = new TestCaseBuilder(World.WithStandardMap().WithInitialSeason());
+        TestCaseBuilder setup = new TestCaseBuilder(World.WithStandardMap());
         setup["Germany"]
             .Army("Mun").Holds().GetReference(out var order);
 
@@ -96,7 +96,7 @@ public class MovementAdjudicatorTest
     [Test]
     public void Adjudication_Move()
     {
-        TestCaseBuilder setup = new TestCaseBuilder(World.WithStandardMap().WithInitialSeason());
+        TestCaseBuilder setup = new TestCaseBuilder(World.WithStandardMap());
         setup["Germany"]
             .Army("Mun").MovesTo("Tyr").GetReference(out var order);
 
@@ -122,7 +122,7 @@ public class MovementAdjudicatorTest
     [Test]
     public void Adjudication_Support()
     {
-        TestCaseBuilder setup = new TestCaseBuilder(World.WithStandardMap().WithInitialSeason());
+        TestCaseBuilder setup = new TestCaseBuilder(World.WithStandardMap());
         setup["Germany"]
             .Army("Mun").MovesTo("Tyr").GetReference(out var move)
             .Army("Boh").Supports.Army("Mun").MoveTo("Tyr").GetReference(out var support);

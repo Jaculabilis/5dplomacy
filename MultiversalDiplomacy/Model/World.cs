@@ -23,6 +23,11 @@ public class World
     public ReadOnlyCollection<Season> Seasons { get; }
 
     /// <summary>
+    /// The first season of the game.
+    /// </summary>
+    public Season RootSeason { get; }
+
+    /// <summary>
     /// All units in the multiverse.
     /// </summary>
     public ReadOnlyCollection<Unit> Units { get; }
@@ -37,10 +42,14 @@ public class World
     /// </summary>
     public Options Options { get; }
 
+    /// <summary>
+    /// Create a new World, providing all state data.
+    /// </summary>
     private World(
         ReadOnlyCollection<Province> provinces,
         ReadOnlyCollection<Power> powers,
         ReadOnlyCollection<Season> seasons,
+        Season rootSeason,
         ReadOnlyCollection<Unit> units,
         ReadOnlyCollection<RetreatingUnit> retreatingUnits,
         Options options)
@@ -48,22 +57,49 @@ public class World
         this.Provinces = provinces;
         this.Powers = powers;
         this.Seasons = seasons;
+        this.RootSeason = rootSeason;
         this.Units = units;
         this.RetreatingUnits = retreatingUnits;
         this.Options = options;
     }
 
     /// <summary>
-    /// Create a new world with specified provinces and powers.
+    /// Create a new World from a previous one, replacing some state data.
+    /// </summary>
+    private World(
+        World previous,
+        ReadOnlyCollection<Province>? provinces = null,
+        ReadOnlyCollection<Power>? powers = null,
+        ReadOnlyCollection<Season>? seasons = null,
+        ReadOnlyCollection<Unit>? units = null,
+        ReadOnlyCollection<RetreatingUnit>? retreatingUnits = null,
+        Options? options = null)
+        : this(
+            provinces ?? previous.Provinces,
+            powers ?? previous.Powers,
+            seasons ?? previous.Seasons,
+            previous.RootSeason,  // Can't change the root season
+            units ?? previous.Units,
+            retreatingUnits ?? previous.RetreatingUnits,
+            options ?? previous.Options)
+    {
+    }
+
+    /// <summary>
+    /// Create a new world with specified provinces and powers and an initial season.
     /// </summary>
     public static World WithMap(IEnumerable<Province> provinces, IEnumerable<Power> powers)
-        => new World(
+    {
+        Season root = Season.MakeRoot();
+        return new World(
             new(provinces.ToList()),
             new(powers.ToList()),
-            new(new List<Season>()),
+            new(new List<Season> { root }),
+            root,
             new(new List<Unit>()),
             new(new List<RetreatingUnit>()),
             new Options());
+    }
 
     /// <summary>
     /// Create a new world with the standard Diplomacy provinces and powers.
@@ -71,42 +107,22 @@ public class World
     public static World WithStandardMap()
         => WithMap(StandardProvinces, StandardPowers);
 
-    /// <summary>
-    /// Create a new world with new seasons.
-    /// </summary>
-    public World WithSeasons(IEnumerable<Season> seasons)
+    public World Update(
+        IEnumerable<Season>? seasons = null,
+        IEnumerable<Unit>? units = null,
+        IEnumerable<RetreatingUnit>? retreats = null)
         => new World(
-            this.Provinces,
-            this.Powers,
-            new(seasons.ToList()),
-            this.Units,
-            this.RetreatingUnits,
-            this.Options);
-
-    /// <summary>
-    /// Create a new world with an initial season.
-    /// </summary>
-    public World WithInitialSeason()
-        => WithSeasons(new List<Season> { Season.MakeRoot() });
-
-    /// <summary>
-    /// Create a new world with new units.
-    /// </summary>
-    public World WithUnits(IEnumerable<Unit> units)
-        => new World(
-            this.Provinces,
-            this.Powers,
-            this.Seasons,
-            new(units.ToList()),
-            this.RetreatingUnits,
-            this.Options);
+            previous: this,
+            seasons: seasons == null ? this.Seasons : new(seasons.ToList()),
+            units: units == null ? this.Units : new(units.ToList()),
+            retreatingUnits: retreats == null ? this.RetreatingUnits : new(retreats.ToList()));
 
     /// <summary>
     /// Create a new world with new units created from unit specs. Units specs are in the format
     /// "<power> <A/F> <province> [<coast>]". If the province or coast name has a space in it, the
-    /// abbreviation should be used.
+    /// abbreviation should be used. Unit specs always describe units in the root season.
     /// </summary>
-    public World WithUnits(params string[] unitSpecs)
+    public World AddUnits(params string[] unitSpecs)
     {
         IEnumerable<Unit> units = unitSpecs.Select(spec =>
         {
@@ -123,18 +139,18 @@ public class World
                 : splits.Length == 3
                     ? this.GetWater(splits[2])
                     : this.GetWater(splits[2], splits[3]);
-            Unit unit = Unit.Build(location, this.Seasons.First(), power, type);
+            Unit unit = Unit.Build(location, this.RootSeason, power, type);
             return unit;
         });
-        return this.WithUnits(units);
+        return this.Update(units: units);
     }
 
     /// <summary>
     /// Create a new world with standard Diplomacy initial unit placements.
     /// </summary>
-    public World WithStandardUnits()
+    public World AddStandardUnits()
     {
-        return this.WithUnits(
+        return this.AddUnits(
             "Austria A Bud",
             "Austria A Vir",
             "Austria F Tri",
@@ -160,22 +176,12 @@ public class World
         );
     }
 
-    public World WithRetreats(IEnumerable<RetreatingUnit> retreatingUnits)
-        => new World(
-            this.Provinces,
-            this.Powers,
-            this.Seasons,
-            this.Units,
-            new(retreatingUnits.ToList()),
-            this.Options);
-
     /// <summary>
     /// A standard Diplomacy game setup.
     /// </summary>
     public static World Standard => World
         .WithStandardMap()
-        .WithInitialSeason()
-        .WithStandardUnits();
+        .AddStandardUnits();
 
     /// <summary>
     /// Get a province by name. Throws if the province is not found.

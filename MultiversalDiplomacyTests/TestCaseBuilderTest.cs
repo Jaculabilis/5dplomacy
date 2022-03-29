@@ -12,7 +12,7 @@ class TestCaseBuilderTest
     [Test]
     public void BuilderCreatesUnits()
     {
-        TestCaseBuilder setup = new(World.WithStandardMap().WithInitialSeason());
+        TestCaseBuilder setup = new(World.WithStandardMap());
 
         Assert.That(setup.World.Powers.Count(), Is.EqualTo(7), "Unexpected power count");
         Assert.That(setup.World.Units, Is.Empty, "Expected no units to be created yet");
@@ -50,7 +50,7 @@ class TestCaseBuilderTest
     [Test]
     public void BuilderCreatesOrders()
     {
-        TestCaseBuilder setup = new(World.WithStandardMap().WithInitialSeason());
+        TestCaseBuilder setup = new(World.WithStandardMap());
 
         Assert.That(setup.World.Powers.Count(), Is.EqualTo(7), "Unexpected power count");
         Assert.That(setup.World.Units, Is.Empty, "Expected no units to be created yet");
@@ -120,7 +120,7 @@ class TestCaseBuilderTest
     {
         IPhaseAdjudicator rubberStamp = new TestAdjudicator(validate: TestAdjudicator.RubberStamp);
 
-        TestCaseBuilder setup = new TestCaseBuilder(World.WithStandardMap().WithInitialSeason());
+        TestCaseBuilder setup = new TestCaseBuilder(World.WithStandardMap());
         setup["Germany"]
             .Army("Mun").Holds().GetReference(out var orderMun);
 
@@ -164,7 +164,7 @@ class TestCaseBuilderTest
             validate: TestAdjudicator.RubberStamp,
             adjudicate: TestAdjudicator.NoMoves);
 
-        TestCaseBuilder setup = new TestCaseBuilder(World.WithStandardMap().WithInitialSeason());
+        TestCaseBuilder setup = new TestCaseBuilder(World.WithStandardMap());
         setup["Germany"]
             .Army("Mun").Holds().GetReference(out var orderMun);
 
