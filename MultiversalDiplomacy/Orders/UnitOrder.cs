@@ -16,4 +16,12 @@ public abstract class UnitOrder : Order
     {
         this.Unit = unit;
     }
+
+    /// <summary>
+    /// Returns whether a move order is moving into this order's unit's province.
+    /// </summary>
+    public bool IsIncoming(MoveOrder other)
+        => this != other
+        && other.Season == this.Unit.Season
+        && other.Province == this.Unit.Province;
 }

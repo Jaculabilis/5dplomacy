@@ -133,7 +133,13 @@ public class TestCaseBuilder
         /// <summary>
         /// Make the support order target an army.
         /// </summary>
-        public ISupportTypeContext Army(string provinceName, string? powerName = null);
+        /// <param name="season">
+        /// The unit season. If not specified, defaults to the same season as the ordered unit.
+        /// </param>
+        public ISupportTypeContext Army(
+            string provinceName,
+            Season? season = null,
+            string? powerName = null);
 
         /// <summary>
         /// Make the support order target a fleet.
@@ -157,7 +163,14 @@ public class TestCaseBuilder
         /// <summary>
         /// Give the unit an order to support the target's move order.
         /// </summary>
-        public IOrderDefinedContext<SupportMoveOrder> MoveTo(string provinceName, string? coast = null);
+        /// <param name="season">
+        /// The target's destination season. If not specified, defaults to the same season as the
+        /// target (not the ordered unit).
+        /// </param>
+        public IOrderDefinedContext<SupportMoveOrder> MoveTo(
+            string provinceName,
+            Season? season = null,
+            string? coast = null);
     }
 
     /// <summary>
@@ -506,14 +519,18 @@ public class TestCaseBuilder
             this.UnitContext = unitContext;
         }
 
-        public ISupportTypeContext Army(string provinceName, string? powerName = null)
+        public ISupportTypeContext Army(
+            string provinceName,
+            Season? season = null,
+            string? powerName = null)
         {
             Power power = powerName == null
                 ? this.PowerContext.Power
                 : this.Builder.World.GetPower(powerName);
             Location location = this.Builder.World.GetLand(provinceName);
+            Season destSeason = season ?? this.SeasonContext.Season;
             Unit unit = this.Builder.GetOrBuildUnit(
-                power, location, this.SeasonContext.Season, UnitType.Army);
+                power, location, destSeason, UnitType.Army);
             return new SupportTypeContext(this, unit);
         }
 
@@ -559,16 +576,20 @@ public class TestCaseBuilder
             return new OrderDefinedContext<SupportHoldOrder>(this.UnitContext, order);
         }
 
-        public IOrderDefinedContext<SupportMoveOrder> MoveTo(string provinceName, string? coast = null)
+        public IOrderDefinedContext<SupportMoveOrder> MoveTo(
+            string provinceName,
+            Season? season = null,
+            string? coast = null)
         {
             Location destination = this.Target.Type == UnitType.Army
                 ? this.Builder.World.GetLand(provinceName)
                 : this.Builder.World.GetWater(provinceName, coast);
+            Season targetDestSeason = season ?? this.Target.Season;
             SupportMoveOrder order = new SupportMoveOrder(
                 this.PowerContext.Power,
                 this.UnitContext.Unit,
                 this.Target,
-                this.SeasonContext.Season,
+                targetDestSeason,
                 destination);
             this.Builder.OrderList.Add(order);
             return new OrderDefinedContext<SupportMoveOrder>(this.UnitContext, order);

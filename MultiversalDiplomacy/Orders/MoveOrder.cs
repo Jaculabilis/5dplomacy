@@ -34,9 +34,20 @@ public class MoveOrder : UnitOrder
         this.Location = location;
     }
 
+    /// <summary>
+    /// Returns whether another move order is in a head-to-head battle with this order.
+    /// </summary>
     public bool IsOpposing(MoveOrder other)
         => this.Season == other.Unit.Season
         && other.Season == this.Unit.Season
         && this.Province == other.Unit.Province
         && other.Province == this.Unit.Province;
+
+    /// <summary>
+    /// Returns whether another move order has the same destination as this order.
+    /// </summary>
+    public bool IsCompeting(MoveOrder other)
+        => this != other
+        && this.Season == other.Season
+        && this.Province == other.Province;
 }

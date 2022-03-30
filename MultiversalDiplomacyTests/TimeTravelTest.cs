@@ -50,4 +50,54 @@ public class TimeTravelTest
         Unit aMun1 = world.GetUnitAt("Mun", fork.Coord);
         Assert.That(aMun1.Past, Is.EqualTo(originalUnit));
     }
+
+    [Test]
+    public void SupportToRepelledPastMoveForksTimeline()
+    {
+        TestCaseBuilder setup = new(World.WithStandardMap(), MovementPhaseAdjudicator.Instance);
+
+        // Fail to dislodge on the first turn, then support the move so it succeeds.
+        setup[(0, 0)]
+            .GetReference(out Season s0)
+            ["Germany"]
+                .Army("Mun").MovesTo("Tyr").GetReference(out var mun0)
+            ["Austria"]
+                .Army("Tyr").Holds().GetReference(out var tyr0);
+
+        setup.ValidateOrders();
+        Assert.That(mun0, Is.Valid);
+        Assert.That(tyr0, Is.Valid);
+        setup.AdjudicateOrders();
+        Assert.That(mun0, Is.Repelled);
+        Assert.That(tyr0, Is.NotDislodged);
+        setup.UpdateWorld();
+
+        setup[(1, 0)]
+            ["Germany"]
+                .Army("Mun").Supports.Army("Mun", season: s0).MoveTo("Tyr").GetReference(out var mun1)
+            ["Austria"]
+                .Army("Tyr").Holds();
+
+        // Confirm that history is changed.
+        setup.ValidateOrders();
+        Assert.That(mun1, Is.Valid);
+        setup.AdjudicateOrders();
+        Assert.That(mun1, Is.NotCut);
+        Assert.That(mun0, Is.Victorious);
+        Assert.That(tyr0, Is.Dislodged);
+
+        // Confirm that an alternate future is created.
+        World world = setup.UpdateWorld();
+        Season fork = world.GetSeason(1, 1);
+        Unit tyr1 = world.GetUnitAt("Tyr", fork.Coord);
+        Assert.That(
+            tyr1.Past,
+            Is.EqualTo(mun0.Order.Unit),
+            "Expected A Mun 0:0 to advance to Tyr 1:1");
+        Assert.That(
+            world.RetreatingUnits.Count,
+            Is.EqualTo(1),
+            "Expected A Tyr 0:0 to be in retreat");
+        Assert.That(world.RetreatingUnits.First().Unit, Is.EqualTo(tyr0.Order.Unit));
+    }
 }
