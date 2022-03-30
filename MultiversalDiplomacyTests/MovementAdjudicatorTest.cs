@@ -11,11 +11,11 @@ public class MovementAdjudicatorTest
     [Test]
     public void Validation_ValidHold()
     {
-        TestCaseBuilder setup = new TestCaseBuilder(World.WithStandardMap());
+        TestCaseBuilder setup = new(World.WithStandardMap(), MovementPhaseAdjudicator.Instance);
         setup["Germany"]
             .Army("Mun").Holds().GetReference(out var order);
 
-        setup.ValidateOrders(MovementPhaseAdjudicator.Instance);
+        setup.ValidateOrders();
 
         Assert.That(order, Is.Valid, "Unexpected validation result");
         Assert.That(order.Replacement, Is.Null, "Unexpected order replacement");
@@ -24,11 +24,11 @@ public class MovementAdjudicatorTest
     [Test]
     public void Validation_ValidMove()
     {
-        TestCaseBuilder setup = new TestCaseBuilder(World.WithStandardMap());
+        TestCaseBuilder setup = new(World.WithStandardMap(), MovementPhaseAdjudicator.Instance);
         setup["Germany"]
             .Army("Mun").MovesTo("Tyr").GetReference(out var order);
 
-        setup.ValidateOrders(MovementPhaseAdjudicator.Instance);
+        setup.ValidateOrders();
 
         Assert.That(order, Is.Valid, "Unexpected validation result");
         Assert.That(order.Replacement, Is.Null, "Unexpected order replacement");
@@ -37,11 +37,11 @@ public class MovementAdjudicatorTest
     [Test]
     public void Validation_ValidConvoy()
     {
-        TestCaseBuilder setup = new TestCaseBuilder(World.WithStandardMap());
+        TestCaseBuilder setup = new(World.WithStandardMap(), MovementPhaseAdjudicator.Instance);
         setup["Germany"]
             .Fleet("Nth").Convoys.Army("Hol").To("Lon").GetReference(out var order);
 
-        setup.ValidateOrders(MovementPhaseAdjudicator.Instance);
+        setup.ValidateOrders();
 
         Assert.That(order, Is.Valid, "Unexpected validation result");
         Assert.That(order.Replacement, Is.Null, "Unexpected order replacement");
@@ -50,11 +50,11 @@ public class MovementAdjudicatorTest
     [Test]
     public void Validation_ValidSupportHold()
     {
-        TestCaseBuilder setup = new TestCaseBuilder(World.WithStandardMap());
+        TestCaseBuilder setup = new(World.WithStandardMap(), MovementPhaseAdjudicator.Instance);
         setup["Germany"]
             .Army("Mun").Supports.Army("Kie").Hold().GetReference(out var order);
 
-        setup.ValidateOrders(MovementPhaseAdjudicator.Instance);
+        setup.ValidateOrders();
 
         Assert.That(order, Is.Valid, "Unexpected validation result");
         Assert.That(order.Replacement, Is.Null, "Unexpected order replacement");
@@ -63,11 +63,11 @@ public class MovementAdjudicatorTest
     [Test]
     public void Validation_ValidSupportMove()
     {
-        TestCaseBuilder setup = new TestCaseBuilder(World.WithStandardMap());
+        TestCaseBuilder setup = new(World.WithStandardMap(), MovementPhaseAdjudicator.Instance);
         setup["Germany"]
             .Army("Mun").Supports.Army("Kie").MoveTo("Ber").GetReference(out var order);
 
-        setup.ValidateOrders(MovementPhaseAdjudicator.Instance);
+        setup.ValidateOrders();
 
         Assert.That(order, Is.Valid, "Unexpected validation result");
         Assert.That(order.Replacement, Is.Null, "Unexpected order replacement");
@@ -76,11 +76,11 @@ public class MovementAdjudicatorTest
     [Test]
     public void Adjudication_Hold()
     {
-        TestCaseBuilder setup = new TestCaseBuilder(World.WithStandardMap());
+        TestCaseBuilder setup = new(World.WithStandardMap(), MovementPhaseAdjudicator.Instance);
         setup["Germany"]
             .Army("Mun").Holds().GetReference(out var order);
 
-        setup.ValidateOrders(MovementPhaseAdjudicator.Instance);
+        setup.ValidateOrders();
         setup.AdjudicateOrders(MovementPhaseAdjudicator.Instance);
 
         var adjMun = order.Adjudications;
@@ -96,12 +96,12 @@ public class MovementAdjudicatorTest
     [Test]
     public void Adjudication_Move()
     {
-        TestCaseBuilder setup = new TestCaseBuilder(World.WithStandardMap());
+        TestCaseBuilder setup = new(World.WithStandardMap(), MovementPhaseAdjudicator.Instance);
         setup["Germany"]
             .Army("Mun").MovesTo("Tyr").GetReference(out var order);
 
-        setup.ValidateOrders(MovementPhaseAdjudicator.Instance);
-        setup.AdjudicateOrders(MovementPhaseAdjudicator.Instance);
+        setup.ValidateOrders();
+        setup.AdjudicateOrders();
 
         var adjMun = order.Adjudications;
         Assert.That(adjMun.All(adj => adj.Resolved), Is.True);
@@ -122,13 +122,13 @@ public class MovementAdjudicatorTest
     [Test]
     public void Adjudication_Support()
     {
-        TestCaseBuilder setup = new TestCaseBuilder(World.WithStandardMap());
+        TestCaseBuilder setup = new(World.WithStandardMap(), MovementPhaseAdjudicator.Instance);
         setup["Germany"]
             .Army("Mun").MovesTo("Tyr").GetReference(out var move)
             .Army("Boh").Supports.Army("Mun").MoveTo("Tyr").GetReference(out var support);
 
-        setup.ValidateOrders(MovementPhaseAdjudicator.Instance);
-        setup.AdjudicateOrders(MovementPhaseAdjudicator.Instance);
+        setup.ValidateOrders();
+        setup.AdjudicateOrders();
 
         var adjBoh = support.Adjudications;
         Assert.That(adjBoh.All(adj => adj.Resolved), Is.True);
@@ -156,17 +156,17 @@ public class MovementAdjudicatorTest
     [Test]
     public void Update_SingleHold()
     {
-        TestCaseBuilder setup = new(World.WithStandardMap());
+        TestCaseBuilder setup = new(World.WithStandardMap(), MovementPhaseAdjudicator.Instance);
         setup["Germany"]
             .Army("Mun").Holds().GetReference(out var mun);
 
-        setup.ValidateOrders(MovementPhaseAdjudicator.Instance);
+        setup.ValidateOrders();
         Assert.That(mun, Is.Valid);
 
-        setup.AdjudicateOrders(MovementPhaseAdjudicator.Instance);
+        setup.AdjudicateOrders();
         Assert.That(mun, Is.NotDislodged);
 
-        World updated = setup.UpdateWorld(MovementPhaseAdjudicator.Instance);
+        World updated = setup.UpdateWorld();
 
         // Confirm the future was created
         Assert.That(updated.Seasons.Count, Is.EqualTo(2));
@@ -185,18 +185,18 @@ public class MovementAdjudicatorTest
     [Test]
     public void Update_DoubleHold()
     {
-        TestCaseBuilder setup = new(World.WithStandardMap());
+        TestCaseBuilder setup = new(World.WithStandardMap(), MovementPhaseAdjudicator.Instance);
         setup[(0, 0)]
             .GetReference(out Season s1)
             ["Germany"]
                 .Army("Mun").Holds().GetReference(out var mun1);
 
         Assert.That(mun1.Order.Unit.Season, Is.EqualTo(s1));
-        setup.ValidateOrders(MovementPhaseAdjudicator.Instance);
+        setup.ValidateOrders();
         Assert.That(mun1, Is.Valid);
-        setup.AdjudicateOrders(MovementPhaseAdjudicator.Instance);
+        setup.AdjudicateOrders();
         Assert.That(mun1, Is.NotDislodged);
-        World updated = setup.UpdateWorld(MovementPhaseAdjudicator.Instance);
+        World updated = setup.UpdateWorld();
 
         // Confirm the future was created
         Season s2 = updated.GetSeason(1, 0);
@@ -217,16 +217,16 @@ public class MovementAdjudicatorTest
                 .Army("Mun").Holds().GetReference(out var mun2);
 
         // Validate the second set of orders
-        var validations = setup.ValidateOrders(MovementPhaseAdjudicator.Instance);
+        var validations = setup.ValidateOrders();
         Assert.That(validations.Count, Is.EqualTo(1));
         Assert.That(mun2, Is.Valid);
 
         // Adjudicate the second set of orders
-        var adjudications = setup.AdjudicateOrders(MovementPhaseAdjudicator.Instance);
+        var adjudications = setup.AdjudicateOrders();
         Assert.That(mun2, Is.NotDislodged);
 
         // Update the world again
-        updated = setup.UpdateWorld(MovementPhaseAdjudicator.Instance);
+        updated = setup.UpdateWorld();
         Season s3 = updated.GetSeason(s2.Turn + 1, s2.Timeline);
         Unit u3 = updated.GetUnitAt("Mun", s3.Coord);
         Assert.That(u3.Past, Is.EqualTo(mun2.Order.Unit));
@@ -235,18 +235,18 @@ public class MovementAdjudicatorTest
     [Test]
     public void Update_DoubleMove()
     {
-        TestCaseBuilder setup = new(World.WithStandardMap());
+        TestCaseBuilder setup = new(World.WithStandardMap(), MovementPhaseAdjudicator.Instance);
         setup[(0, 0)]
             .GetReference(out Season s1)
             ["Germany"]
                 .Army("Mun").MovesTo("Tyr").GetReference(out var mun1);
 
         Assert.That(mun1.Order.Unit.Season, Is.EqualTo(s1));
-        setup.ValidateOrders(MovementPhaseAdjudicator.Instance);
+        setup.ValidateOrders();
         Assert.That(mun1, Is.Valid);
-        setup.AdjudicateOrders(MovementPhaseAdjudicator.Instance);
+        setup.AdjudicateOrders();
         Assert.That(mun1, Is.Victorious);
-        World updated = setup.UpdateWorld(MovementPhaseAdjudicator.Instance);
+        World updated = setup.UpdateWorld();
 
         // Confirm the future was created
         Season s2 = updated.GetSeason(s1.Turn + 1, s1.Timeline);
@@ -267,16 +267,16 @@ public class MovementAdjudicatorTest
                 .Army("Tyr").MovesTo("Mun").GetReference(out var tyr2);
 
         // Validate the second set of orders
-        var validations = setup.ValidateOrders(MovementPhaseAdjudicator.Instance);
+        var validations = setup.ValidateOrders();
         Assert.That(validations.Count, Is.EqualTo(1));
         Assert.That(tyr2, Is.Valid);
 
         // Adjudicate the second set of orders
-        var adjudications = setup.AdjudicateOrders(MovementPhaseAdjudicator.Instance);
+        var adjudications = setup.AdjudicateOrders();
         Assert.That(tyr2, Is.Victorious);
 
         // Update the world again
-        updated = setup.UpdateWorld(MovementPhaseAdjudicator.Instance);
+        updated = setup.UpdateWorld();
         Season s3 = updated.GetSeason(s2.Turn + 1, s2.Timeline);
         Unit u3 = updated.GetUnitAt("Mun", s3.Coord);
         Assert.That(u3.Past, Is.EqualTo(u2));

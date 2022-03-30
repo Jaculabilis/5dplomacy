@@ -170,7 +170,7 @@ public class TestCaseBuilder
         /// <summary>
         /// Perform validation, adjudication, and update using the defined orders.
         /// </summary>
-        public TestCaseBuilder Execute(IPhaseAdjudicator adjudicator);
+        public TestCaseBuilder Execute(IPhaseAdjudicator? adjudicator = null);
 
         /// <summary>
         /// Choose a new season to define orders for.
@@ -199,6 +199,7 @@ public class TestCaseBuilder
     }
 
     public World World { get; private set; }
+    private IPhaseAdjudicator LastUsedAdjudicator { get; set; }
     public ReadOnlyCollection<Order> Orders { get; }
     private List<Order> OrderList;
     public List<OrderValidation>? ValidationResults { get; private set; }
@@ -207,9 +208,10 @@ public class TestCaseBuilder
     /// <summary>
     /// Create a test case builder that will operate on a world.
     /// </summary>
-    public TestCaseBuilder(World world)
+    public TestCaseBuilder(World world, IPhaseAdjudicator? adjudicator = null)
     {
         this.World = world;
+        this.LastUsedAdjudicator = adjudicator ?? new TestAdjudicator();
         this.OrderList = new();
         this.Orders = new(this.OrderList);
         this.ValidationResults = null;
@@ -260,20 +262,24 @@ public class TestCaseBuilder
         return newUnit;
     }
 
-    public List<OrderValidation> ValidateOrders(IPhaseAdjudicator adjudicator)
+    public List<OrderValidation> ValidateOrders(IPhaseAdjudicator? adjudicator = null)
     {
+        adjudicator ??= this.LastUsedAdjudicator;
+        this.LastUsedAdjudicator = adjudicator;
         this.ValidationResults = adjudicator.ValidateOrders(this.World, this.Orders.ToList());
         this.OrderList.Clear();
         return this.ValidationResults;
     }
 
-    public List<AdjudicationDecision> AdjudicateOrders(IPhaseAdjudicator adjudicator)
+    public List<AdjudicationDecision> AdjudicateOrders(IPhaseAdjudicator? adjudicator = null)
     {
         if (this.ValidationResults == null)
         {
             throw new InvalidOperationException("Cannot adjudicate before validation");
         }
 
+        adjudicator ??= this.LastUsedAdjudicator;
+        this.LastUsedAdjudicator = adjudicator;
         List<Order> orders = this.ValidationResults
             .Where(validation => validation.Valid)
             .Select(validation => validation.Order)
@@ -283,13 +289,15 @@ public class TestCaseBuilder
         return this.AdjudicationResults;
     }
 
-    public World UpdateWorld(IPhaseAdjudicator adjudicator)
+    public World UpdateWorld(IPhaseAdjudicator? adjudicator = null)
     {
         if (this.AdjudicationResults == null)
         {
             throw new InvalidOperationException("Cannot update before adjudication");
         }
 
+        adjudicator ??= this.LastUsedAdjudicator;
+        this.LastUsedAdjudicator = adjudicator;
         this.World = adjudicator.UpdateWorld(this.World, this.AdjudicationResults);
         this.AdjudicationResults = null;
         return this.World;
@@ -584,8 +592,10 @@ public class TestCaseBuilder
             this.Order = order;
         }
 
-        public TestCaseBuilder Execute(IPhaseAdjudicator adjudicator)
+        public TestCaseBuilder Execute(IPhaseAdjudicator? adjudicator = null)
         {
+            adjudicator ??= this.Builder.LastUsedAdjudicator;
+            this.Builder.LastUsedAdjudicator = adjudicator;
             this.Builder.ValidateOrders(adjudicator);
             this.Builder.AdjudicateOrders(adjudicator);
             this.Builder.UpdateWorld(adjudicator);

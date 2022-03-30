@@ -9,27 +9,27 @@ namespace MultiversalDiplomacyTests;
 public class TimeTravelTest
 {
     [Test]
-    public void MoveIntoOwnPast()
+    public void MoveIntoOwnPastForksTimeline()
     {
-        TestCaseBuilder setup = new(World.WithStandardMap());
+        TestCaseBuilder setup = new(World.WithStandardMap(), MovementPhaseAdjudicator.Instance);
 
         // Hold to move into the future, then move back into the past.
         setup[(0, 0)]
             .GetReference(out Season s0)
             ["Germany"]
                 .Army("Mun").Holds().GetReference(out var mun0)
-            .Execute(MovementPhaseAdjudicator.Instance)
+            .Execute()
         [(1, 0)]
             .GetReference(out Season s1)
             ["Germany"]
                 .Army("Mun").MovesTo("Tyr", season: s0).GetReference(out var mun1);
 
-        setup.ValidateOrders(MovementPhaseAdjudicator.Instance);
+        setup.ValidateOrders();
         Assert.That(mun1, Is.Valid);
-        setup.AdjudicateOrders(MovementPhaseAdjudicator.Instance);
+        setup.AdjudicateOrders();
         Assert.That(mun1, Is.Victorious);
 
-        World world = setup.UpdateWorld(MovementPhaseAdjudicator.Instance);
+        World world = setup.UpdateWorld();
 
         // Confirm that there are now three seasons: the root, a future off the root, and a fork.
         Assert.That(world.Seasons.Count, Is.EqualTo(3));
