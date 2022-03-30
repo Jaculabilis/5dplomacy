@@ -21,7 +21,7 @@ public class TimeTravelTest
 
         setup.ValidateOrders(MovementPhaseAdjudicator.Instance);
         setup.AdjudicateOrders(MovementPhaseAdjudicator.Instance);
-        setup = new(setup.UpdateWorld(MovementPhaseAdjudicator.Instance));
+        setup.UpdateWorld(MovementPhaseAdjudicator.Instance);
 
         // Move into the past of the same timeline.
         setup[(1, 0)]

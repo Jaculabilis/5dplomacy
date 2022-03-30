@@ -258,6 +258,7 @@ public class TestCaseBuilder
     public List<OrderValidation> ValidateOrders(IPhaseAdjudicator adjudicator)
     {
         this.ValidationResults = adjudicator.ValidateOrders(this.World, this.Orders.ToList());
+        this.OrderList.Clear();
         return this.ValidationResults;
     }
 
@@ -273,6 +274,7 @@ public class TestCaseBuilder
             .Select(validation => validation.Order)
             .ToList();
         this.AdjudicationResults = adjudicator.AdjudicateOrders(this.World, orders);
+        this.ValidationResults = null;
         return this.AdjudicationResults;
     }
 
@@ -284,6 +286,7 @@ public class TestCaseBuilder
         }
 
         this.World = adjudicator.UpdateWorld(this.World, this.AdjudicationResults);
+        this.AdjudicationResults = null;
         return this.World;
     }
 

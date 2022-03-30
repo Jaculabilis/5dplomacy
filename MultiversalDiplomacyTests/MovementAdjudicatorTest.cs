@@ -212,7 +212,6 @@ public class MovementAdjudicatorTest
         Assert.That(u2.Past, Is.EqualTo(mun1.Order.Unit));
         Assert.That(u2.Season, Is.EqualTo(s2));
 
-        setup = new(updated);
         setup[(1, 0)]
             ["Germany"]
                 .Army("Mun").Holds().GetReference(out var mun2);
@@ -263,7 +262,6 @@ public class MovementAdjudicatorTest
         Assert.That(u2.Past, Is.EqualTo(mun1.Order.Unit));
         Assert.That(u2.Season, Is.EqualTo(s2));
 
-        setup = new(updated);
         setup[(1, 0)]
             ["Germany"]
                 .Army("Tyr").MovesTo("Mun").GetReference(out var tyr2);
