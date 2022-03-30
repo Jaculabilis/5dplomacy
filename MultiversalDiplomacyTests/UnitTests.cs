@@ -14,7 +14,7 @@ public class UnitTests
             Boh = world.GetLand("Boh"),
             Tyr = world.GetLand("Tyr");
         Power pw1 = world.GetPower("Austria");
-        Season s1 = world.Seasons.First();
+        Season s1 = world.RootSeason;
         Unit u1 = Unit.Build(Mun, s1, pw1, UnitType.Army);
 
         Season s2 = s1.MakeNext();

@@ -47,4 +47,19 @@ public class SeasonTests
         Assert.That(b2.InAdjacentTimeline(c1), Is.True, "Expected alts with common origin to be adjacent");
         Assert.That(b2.InAdjacentTimeline(d1), Is.False, "Expected alts from different origins not to be adjacent");
     }
+
+    [Test]
+    public void LookupTest()
+    {
+        World world = World.WithStandardMap();
+        Season s2 = world.RootSeason.MakeNext();
+        Season s3 = s2.MakeNext();
+        Season s4 = s2.MakeFork();
+        World updated = world.Update(seasons: world.Seasons.Append(s2).Append(s3).Append(s4));
+
+        Assert.That(updated.GetSeason(Season.FIRST_TURN, 0), Is.EqualTo(updated.RootSeason));
+        Assert.That(updated.GetSeason(Season.FIRST_TURN + 1, 0), Is.EqualTo(s2));
+        Assert.That(updated.GetSeason(Season.FIRST_TURN + 2, 0), Is.EqualTo(s3));
+        Assert.That(updated.GetSeason(Season.FIRST_TURN + 2, 1), Is.EqualTo(s4));
+    }
 }

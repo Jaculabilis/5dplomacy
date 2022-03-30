@@ -12,10 +12,36 @@ namespace MultiversalDiplomacyTests;
 public class TestCaseBuilder
 {
     /// <summary>
+    /// Context for choosing a season to define orders for.
+    /// </summary>
+    public interface ISeasonContext
+    {
+        /// <summary>
+        /// Choose a new season to define orders for.
+        /// </summary>
+        public ISeasonContext this[(int turn, int timeline) seasonCoord] { get; }
+
+        /// <summary>
+        /// Get the context for defining the orders for a power.
+        /// </summary>
+        public IPowerContext this[string powerName] { get; }
+
+        /// <summary>
+        /// Save a reference to this season.
+        /// </summary>
+        public ISeasonContext GetReference(out Season season);
+    }
+
+    /// <summary>
     /// Context for defining orders given by a power.
     /// </summary>
     public interface IPowerContext
     {
+        /// <summary>
+        /// Choose a new season to define orders for.
+        /// </summary>
+        public ISeasonContext this[(int turn, int timeline) seasonCoord] { get; }
+
         /// <summary>
         /// Get the context for defining the orders for another power.
         /// </summary>
@@ -136,6 +162,11 @@ public class TestCaseBuilder
     public interface IOrderDefinedContext<OrderType> where OrderType : Order
     {
         /// <summary>
+        /// Choose a new season to define orders for.
+        /// </summary>
+        public ISeasonContext this[(int turn, int timeline) seasonCoord] { get; }
+
+        /// <summary>
         /// Get the context for defining the orders for another power.
         /// </summary>
         public IPowerContext this[string powerName] { get; }
@@ -159,34 +190,31 @@ public class TestCaseBuilder
     public World World { get; private set; }
     public ReadOnlyCollection<Order> Orders { get; }
     private List<Order> OrderList;
-    private Season Season;
     public List<OrderValidation>? ValidationResults { get; private set; }
     public List<AdjudicationDecision>? AdjudicationResults { get; private set; }
 
     /// <summary>
     /// Create a test case builder that will operate on a world.
     /// </summary>
-    public TestCaseBuilder(World world, Season? season = null)
+    public TestCaseBuilder(World world)
     {
         this.World = world;
         this.OrderList = new();
         this.Orders = new(this.OrderList);
-        this.Season = season ?? this.World.Seasons.First();
         this.ValidationResults = null;
         this.AdjudicationResults = null;
     }
 
     /// <summary>
-    /// Get the context for defining the orders for a power.
+    /// Get the context for defining the orders for a power. Defaults to the root season.
     /// </summary>
-    public IPowerContext this[string powerName]
-    {
-        get
-        {
-            Power power = this.World.GetPower(powerName);
-            return new PowerContext(this, power);
-        }
-    }
+    public IPowerContext this[string powerName] => this[(0, 0)][powerName];
+
+    /// <summary>
+    /// Get the context for defining the orders for a season.
+    /// </summary>
+    public ISeasonContext this[(int turn, int timeline) seasonCoord]
+        => new SeasonContext(this, this.World.GetSeason(seasonCoord.turn, seasonCoord.timeline));
 
     /// <summary>
     /// Get a unit matching a description. If no such unit exists, one is created and added to the
@@ -253,19 +281,48 @@ public class TestCaseBuilder
         return this.World;
     }
 
+    private class SeasonContext : ISeasonContext
+    {
+        public TestCaseBuilder Builder;
+        public Season Season;
+
+        public SeasonContext(TestCaseBuilder Builder, Season season)
+        {
+            this.Builder = Builder;
+            this.Season = season;
+        }
+
+        public ISeasonContext this[(int turn, int timeline) seasonCoord]
+            => this.Builder[(seasonCoord.turn, seasonCoord.timeline)];
+
+        public IPowerContext this[string powerName]
+            => new PowerContext(this, this.Builder.World.GetPower(powerName));
+
+        public ISeasonContext GetReference(out Season season)
+        {
+            season = this.Season;
+            return this;
+        }
+    }
+
     private class PowerContext : IPowerContext
     {
         public TestCaseBuilder Builder;
+        public SeasonContext SeasonContext;
         public Power Power;
 
-        public PowerContext(TestCaseBuilder Builder, Power Power)
+        public PowerContext(SeasonContext seasonContext, Power Power)
         {
-            this.Builder = Builder;
+            this.Builder = seasonContext.Builder;
+            this.SeasonContext = seasonContext;
             this.Power = Power;
         }
 
+        public ISeasonContext this[(int turn, int timeline) seasonCoord]
+            => this.SeasonContext[seasonCoord];
+
         public IPowerContext this[string powerName]
-            => this.Builder[powerName];
+            => this.SeasonContext[powerName];
 
         public IUnitContext Army(string provinceName, string? powerName = null)
         {
@@ -274,7 +331,7 @@ public class TestCaseBuilder
                 : this.Builder.World.GetPower(powerName);
             Location location = this.Builder.World.GetLand(provinceName);
             Unit unit = this.Builder.GetOrBuildUnit(
-                power, location, this.Builder.Season, UnitType.Army);
+                power, location, this.SeasonContext.Season, UnitType.Army);
             return new UnitContext(this, unit);
         }
 
@@ -285,7 +342,7 @@ public class TestCaseBuilder
                 : this.Builder.World.GetPower(powerName);
             Location location = this.Builder.World.GetWater(provinceName, coast);
             Unit unit = this.Builder.GetOrBuildUnit(
-                power, location, this.Builder.Season, UnitType.Fleet);
+                power, location, this.SeasonContext.Season, UnitType.Fleet);
             return new UnitContext(this, unit);
         }
     }
@@ -293,25 +350,21 @@ public class TestCaseBuilder
     private class UnitContext : IUnitContext
     {
         public TestCaseBuilder Builder;
+        public SeasonContext SeasonContext;
         public PowerContext PowerContext;
         public Unit Unit;
 
         public UnitContext(PowerContext powerContext, Unit unit)
         {
             this.Builder = powerContext.Builder;
+            this.SeasonContext = powerContext.SeasonContext;
             this.PowerContext = powerContext;
             this.Unit = unit;
         }
 
-        /// <summary>
-        /// Declare that a unit exists without giving it an order.
-        /// </summary>
         public IPowerContext Exists()
             => this.PowerContext;
 
-        /// <summary>
-        /// Order a unit to hold.
-        /// </summary>
         public IOrderDefinedContext<HoldOrder> Holds()
         {
             HoldOrder order = new HoldOrder(this.PowerContext.Power, this.Unit);
@@ -319,9 +372,6 @@ public class TestCaseBuilder
             return new OrderDefinedContext<HoldOrder>(this, order);
         }
 
-        /// <summary>
-        /// Order a unit to move to a destination.
-        /// </summary>
         public IOrderDefinedContext<MoveOrder> MovesTo(string provinceName, string? coast = null)
         {
             Location destination = this.Unit.Type == UnitType.Army
@@ -330,7 +380,7 @@ public class TestCaseBuilder
             MoveOrder moveOrder = new MoveOrder(
                 this.PowerContext.Power,
                 this.Unit,
-                this.Builder.Season,
+                this.SeasonContext.Season,
                 destination);
             this.Builder.OrderList.Add(moveOrder);
             return new OrderDefinedContext<MoveOrder>(this, moveOrder);
@@ -346,12 +396,14 @@ public class TestCaseBuilder
     private class ConvoyContext : IConvoyContext
     {
         public TestCaseBuilder Builder;
+        public SeasonContext SeasonContext;
         public PowerContext PowerContext;
         public UnitContext UnitContext;
 
         public ConvoyContext(UnitContext unitContext)
         {
             this.Builder = unitContext.Builder;
+            this.SeasonContext = unitContext.SeasonContext;
             this.PowerContext = unitContext.PowerContext;
             this.UnitContext = unitContext;
         }
@@ -363,7 +415,7 @@ public class TestCaseBuilder
                 : this.Builder.World.GetPower(powerName);
             Location location = this.Builder.World.GetLand(provinceName);
             Unit unit = this.Builder.GetOrBuildUnit(
-                power, location, this.Builder.Season, UnitType.Army);
+                power, location, this.SeasonContext.Season, UnitType.Army);
             return new ConvoyDestinationContext(this, unit);
         }
 
@@ -377,7 +429,7 @@ public class TestCaseBuilder
                 : this.Builder.World.GetPower(powerName);
             Location location = this.Builder.World.GetWater(provinceName, coast);
             Unit unit = this.Builder.GetOrBuildUnit(
-                power, location, this.Builder.Season, UnitType.Fleet);
+                power, location, this.SeasonContext.Season, UnitType.Fleet);
             return new ConvoyDestinationContext(this, unit);
         }
     }
@@ -385,6 +437,7 @@ public class TestCaseBuilder
     private class ConvoyDestinationContext : IConvoyDestinationContext
     {
         public TestCaseBuilder Builder;
+        public SeasonContext SeasonContext;
         public PowerContext PowerContext;
         public UnitContext UnitContext;
         public Unit Target;
@@ -392,6 +445,7 @@ public class TestCaseBuilder
         public ConvoyDestinationContext(ConvoyContext convoyContext, Unit target)
         {
             this.Builder = convoyContext.Builder;
+            this.SeasonContext = convoyContext.SeasonContext;
             this.PowerContext = convoyContext.PowerContext;
             this.UnitContext = convoyContext.UnitContext;
             this.Target = target;
@@ -404,7 +458,7 @@ public class TestCaseBuilder
                 this.PowerContext.Power,
                 this.UnitContext.Unit,
                 this.Target,
-                this.Builder.Season,
+                this.SeasonContext.Season,
                 location);
             this.Builder.OrderList.Add(order);
             return new OrderDefinedContext<ConvoyOrder>(this.UnitContext, order);
@@ -414,12 +468,14 @@ public class TestCaseBuilder
     private class SupportContext : ISupportContext
     {
         public TestCaseBuilder Builder;
+        public SeasonContext SeasonContext;
         public PowerContext PowerContext;
         public UnitContext UnitContext;
 
         public SupportContext(UnitContext unitContext)
         {
             this.Builder = unitContext.Builder;
+            this.SeasonContext = unitContext.SeasonContext;
             this.PowerContext = unitContext.PowerContext;
             this.UnitContext = unitContext;
         }
@@ -431,7 +487,7 @@ public class TestCaseBuilder
                 : this.Builder.World.GetPower(powerName);
             Location location = this.Builder.World.GetLand(provinceName);
             Unit unit = this.Builder.GetOrBuildUnit(
-                power, location, this.Builder.Season, UnitType.Army);
+                power, location, this.SeasonContext.Season, UnitType.Army);
             return new SupportTypeContext(this, unit);
         }
 
@@ -445,7 +501,7 @@ public class TestCaseBuilder
                 : this.Builder.World.GetPower(powerName);
             Location location = this.Builder.World.GetWater(provinceName, coast);
             Unit unit = this.Builder.GetOrBuildUnit(
-                power, location, this.Builder.Season, UnitType.Fleet);
+                power, location, this.SeasonContext.Season, UnitType.Fleet);
             return new SupportTypeContext(this, unit);
         }
     }
@@ -453,6 +509,7 @@ public class TestCaseBuilder
     private class SupportTypeContext : ISupportTypeContext
     {
         public TestCaseBuilder Builder;
+        public SeasonContext SeasonContext;
         public PowerContext PowerContext;
         public UnitContext UnitContext;
         public Unit Target;
@@ -460,6 +517,7 @@ public class TestCaseBuilder
         public SupportTypeContext(SupportContext supportContext, Unit target)
         {
             this.Builder = supportContext.Builder;
+            this.SeasonContext = supportContext.SeasonContext;
             this.PowerContext = supportContext.PowerContext;
             this.UnitContext = supportContext.UnitContext;
             this.Target = target;
@@ -484,7 +542,7 @@ public class TestCaseBuilder
                 this.PowerContext.Power,
                 this.UnitContext.Unit,
                 this.Target,
-                this.Builder.Season,
+                this.SeasonContext.Season,
                 destination);
             this.Builder.OrderList.Add(order);
             return new OrderDefinedContext<SupportMoveOrder>(this.UnitContext, order);
@@ -494,6 +552,7 @@ public class TestCaseBuilder
     private class OrderDefinedContext<OrderType> : IOrderDefinedContext<OrderType> where OrderType : Order
     {
         public TestCaseBuilder Builder;
+        public SeasonContext SeasonContext;
         public PowerContext PowerContext;
         public UnitContext UnitContext;
         public OrderType Order;
@@ -501,12 +560,17 @@ public class TestCaseBuilder
         public OrderDefinedContext(UnitContext unitContext, OrderType order)
         {
             this.Builder = unitContext.Builder;
+            this.SeasonContext = unitContext.SeasonContext;
             this.PowerContext = unitContext.PowerContext;
             this.UnitContext = unitContext;
             this.Order = order;
         }
 
-        public IPowerContext this[string powerName] => this.PowerContext[powerName];
+        public ISeasonContext this[(int turn, int timeline) seasonCoord]
+            => this.SeasonContext[seasonCoord];
+
+        public IPowerContext this[string powerName]
+            => this.SeasonContext[powerName];
 
         public IUnitContext Army(string provinceName, string? powerName = null)
             => this.PowerContext.Army(provinceName, powerName);

@@ -40,6 +40,11 @@ public class Season
     public int Timeline { get; }
 
     /// <summary>
+    /// The season's spatial location as a turn-timeline tuple.
+    /// </summary>
+    public (int Turn, int Timeline) Coord => (this.Turn, this.Timeline);
+
+    /// <summary>
     /// The shared timeline number generator.
     /// </summary>
     private TimelineFactory Timelines { get; }

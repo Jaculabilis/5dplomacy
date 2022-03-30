@@ -27,18 +27,15 @@ class TestCaseBuilderTest
         Assert.That(setup.Orders, Is.Empty, "Expected no orders to be created yet");
         Assert.That(setup.World.Units, Is.Not.Empty, "Expected units to be created");
 
-        Unit armyLON = setup.World.GetUnitAt("London")
-            ?? throw new AssertionException("Expected a unit in London");
+        Unit armyLON = setup.World.GetUnitAt("London");
         Assert.That(armyLON.Power.Name, Is.EqualTo("England"), "Unit created with wrong power");
         Assert.That(armyLON.Type, Is.EqualTo(UnitType.Army), "Unit created with wrong type");
 
-        Unit fleetIRI = setup.World.GetUnitAt("Irish Sea")
-            ?? throw new AssertionException("Expected a unit in Irish Sea");
+        Unit fleetIRI = setup.World.GetUnitAt("Irish Sea");
         Assert.That(fleetIRI.Power.Name, Is.EqualTo("England"), "Unit created with wrong power");
         Assert.That(fleetIRI.Type, Is.EqualTo(UnitType.Fleet), "Unit created with wrong type");
 
-        Unit fleetSTP = setup.World.GetUnitAt("Saint Petersburg")
-            ?? throw new AssertionException("Expected a unit in Saint Petersburg");
+        Unit fleetSTP = setup.World.GetUnitAt("Saint Petersburg");
         Assert.That(fleetSTP.Power.Name, Is.EqualTo("Russia"), "Unit created with wrong power");
         Assert.That(fleetSTP.Type, Is.EqualTo(UnitType.Fleet), "Unit created with wrong type");
         Assert.That(

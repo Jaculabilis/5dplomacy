@@ -233,6 +233,19 @@ public class World
             : GetLocation(provinceName, l => l.Name == coastName || l.Abbreviation == coastName);
 
     /// <summary>
+    /// Get a season by coordinate. Throws if the season is not found.
+    /// </summary>
+    public Season GetSeason(int turn, int timeline)
+    {
+        Season? foundSeason = this.Seasons.SingleOrDefault(
+            s => s != null && s.Turn == turn && s.Timeline == timeline,
+            null);
+        if (foundSeason == null) throw new KeyNotFoundException(
+            $"Season {turn}:{timeline} not found");
+        return foundSeason;
+    }
+
+    /// <summary>
     /// Get a power by name. Throws if there is not exactly one such power.
     /// </summary>
     public Power GetPower(string powerName)
@@ -248,14 +261,18 @@ public class World
     }
 
     /// <summary>
-    /// Returns a unit in a province. Throws if there is not exactly one such unit.
+    /// Returns a unit in a province. Throws if there are duplicate units.
     /// </summary>
-    public Unit? GetUnitAt(string provinceName)
+    public Unit GetUnitAt(string provinceName, (int turn, int timeline)? seasonCoord = null)
     {
         Province province = GetProvince(provinceName);
+        seasonCoord ??= (this.RootSeason.Turn, this.RootSeason.Timeline);
+        Season season = GetSeason(seasonCoord.Value.turn, seasonCoord.Value.timeline);
         Unit? foundUnit = this.Units.SingleOrDefault(
-            u => u != null && u.Location.Province == province,
+            u => u != null && u.Location.Province == province && u.Season == season,
             null);
+        if (foundUnit == null) throw new KeyNotFoundException(
+            $"Unit at {province} at {season} not found");
         return foundUnit;
     }
 
