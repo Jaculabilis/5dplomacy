@@ -18,9 +18,14 @@ public class MoveOrder : UnitOrder
     public Location Location { get; }
 
     /// <summary>
+    /// The destination province to which the unit should move.
+    /// </summary>
+    public Province Province => this.Location.Province;
+
+    /// <summary>
     /// The destination's spatiotemporal location as a province-season tuple.
     /// </summary>
-    public (Province province, Season season) Point => (this.Location.Province, this.Season);
+    public (Province province, Season season) Point => (this.Province, this.Season);
 
     public MoveOrder(Power power, Unit unit, Season season, Location location)
         : base (power, unit)
@@ -32,6 +37,6 @@ public class MoveOrder : UnitOrder
     public bool IsOpposing(MoveOrder other)
         => this.Season == other.Unit.Season
         && other.Season == this.Unit.Season
-        && this.Location.Province == other.Unit.Location.Province
-        && other.Location.Province == this.Unit.Location.Province;
+        && this.Province == other.Unit.Province
+        && other.Province == this.Unit.Province;
 }

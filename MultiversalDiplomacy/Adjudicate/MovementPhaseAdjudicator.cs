@@ -124,7 +124,7 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
         // Trivial check: cannot convoy to non-coastal province.
         AdjudicatorHelpers.InvalidateIfNotMatching(
             order => order.Location.Type == LocationType.Land
-                && order.Location.Province.Locations.Any(loc => loc.Type == LocationType.Water),
+                && order.Province.Locations.Any(loc => loc.Type == LocationType.Water),
             ValidationReason.IllegalDestinationType,
             ref convoyOrders,
             ref validationResults);
@@ -170,7 +170,7 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
             order =>
                 // Map adjacency with respect to province
                 order.Unit.Location.Adjacents.Any(
-                    adjLocation => adjLocation.Province == order.Target.Location.Province)
+                    adjLocation => adjLocation.Province == order.Target.Province)
                 // Turn adjacency
                 && Math.Abs(order.Unit.Season.Turn - order.Target.Season.Turn) <= 1
                 // Timeline adjacency
@@ -189,7 +189,7 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
         // Support-move orders are invalid if the unit supports a move to any location in its own
         // province.
         AdjudicatorHelpers.InvalidateIfNotMatching(
-            order => order.Unit.Location.Province != order.Location.Province,
+            order => order.Unit.Province != order.Province,
             ValidationReason.NoSupportMoveAgainstSelf,
             ref supportMoveOrders,
             ref validationResults);
@@ -202,7 +202,7 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
             order =>
                 // Map adjacency with respect to province
                 order.Unit.Location.Adjacents.Any(
-                    adjLocation => adjLocation.Province == order.Location.Province)
+                    adjLocation => adjLocation.Province == order.Province)
                 // Turn adjacency
                 && Math.Abs(order.Unit.Season.Turn - order.Season.Turn) <= 1
                 // Timeline adjacency

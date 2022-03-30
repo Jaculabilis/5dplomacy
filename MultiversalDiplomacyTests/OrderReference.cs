@@ -108,7 +108,7 @@ public abstract class OrderReference
                 DefendStrength defend => defend.Order == this.Order,
                 PreventStrength prevent => prevent.Order == this.Order,
                 HoldStrength hold => this.Order is UnitOrder unitOrder
-                    ? hold.Province == unitOrder.Unit.Location.Province
+                    ? hold.Province == unitOrder.Unit.Province
                     : false,
                 _ => false,
             }).ToList();

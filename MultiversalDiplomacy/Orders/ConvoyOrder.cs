@@ -22,6 +22,11 @@ public class ConvoyOrder : UnitOrder
     /// </summary>
     public Location Location { get; }
 
+    /// <summary>
+    /// The destination province to which the target is moving.
+    /// </summary>
+    public Province Province => this.Location.Province;
+
     public ConvoyOrder(Power power, Unit unit, Unit target, Season season, Location location)
         : base (power, unit)
     {

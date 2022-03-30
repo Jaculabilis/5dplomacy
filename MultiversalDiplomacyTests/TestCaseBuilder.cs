@@ -249,7 +249,7 @@ public class TestCaseBuilder
         foreach (Unit unit in this.World.Units)
         {
             if (unit.Power == power
-                && unit.Location.Province == location.Province
+                && unit.Province == location.Province
                 && unit.Season == season)
             {
                 return unit;

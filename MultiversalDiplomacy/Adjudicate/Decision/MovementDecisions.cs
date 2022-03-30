@@ -84,7 +84,7 @@ public class MovementDecisions
             // Create a dislodge decision for this unit.
             List<MoveOrder> incoming = orders
                 .OfType<MoveOrder>()
-                .Where(move => move.Location.Province == order.Unit.Location.Province)
+                .Where(move => move.Province == order.Unit.Province)
                 .ToList();
             this.IsDislodged[order.Unit] = new(order, incoming);
 
@@ -110,7 +110,7 @@ public class MovementDecisions
                     .OfType<MoveOrder>()
                     .Where(other
                         => other != move
-                        && other.Location.Province == move.Location.Province)
+                        && other.Province == move.Province)
                     .ToList();
 
                 // Create the move-related decisions.

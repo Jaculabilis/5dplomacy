@@ -68,7 +68,7 @@ class TestCaseBuilderTest
         List<UnitOrder> orders = setup.Orders.OfType<UnitOrder>().ToList();
 
         Func<UnitOrder, bool> OrderForProvince(string name)
-            => order => order.Unit.Location.Province.Name == name;
+            => order => order.Unit.Province.Name == name;
 
         UnitOrder orderBer = orders.Single(OrderForProvince("Berlin"));
         Assert.That(orderBer, Is.InstanceOf<MoveOrder>(), "Unexpected order type");

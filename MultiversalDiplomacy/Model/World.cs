@@ -291,7 +291,7 @@ public class World
         seasonCoord ??= (this.RootSeason.Turn, this.RootSeason.Timeline);
         Season season = GetSeason(seasonCoord.Value.turn, seasonCoord.Value.timeline);
         Unit? foundUnit = this.Units.SingleOrDefault(
-            u => u != null && u.Location.Province == province && u.Season == season,
+            u => u != null && u.Province == province && u.Season == season,
             null);
         if (foundUnit == null) throw new KeyNotFoundException(
             $"Unit at {province} at {season} not found");

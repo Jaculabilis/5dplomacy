@@ -36,7 +36,7 @@ public static class PathFinder
 
         // Verify that the origin is a coastal province.
         if (movingUnit.Location.Type != LocationType.Land) return false;
-        IEnumerable<Location> originCoasts = movingUnit.Location.Province.Locations
+        IEnumerable<Location> originCoasts = movingUnit.Province.Locations
             .Where(location => location.Type == LocationType.Water);
         if (!originCoasts.Any()) return false;
 

@@ -16,6 +16,11 @@ public class Unit
     public Location Location { get; }
 
     /// <summary>
+    /// The province where the unit is.
+    /// </summary>
+    public Province Province => this.Location.Province;
+
+    /// <summary>
     /// The season in time when the unit is.
     /// </summary>
     public Season Season { get; }
@@ -33,7 +38,7 @@ public class Unit
     /// <summary>
     /// The unit's spatiotemporal location as a province-season tuple.
     /// </summary>
-    public (Province province, Season season) Point => (this.Location.Province, this.Season);
+    public (Province province, Season season) Point => (this.Province, this.Season);
 
     private Unit(Unit? past, Location location, Season season, Power power, UnitType type)
     {
@@ -46,7 +51,7 @@ public class Unit
 
     public override string ToString()
     {
-        return $"{this.Power} {this.Type} {this.Location.Province} {this.Season}";
+        return $"{this.Power} {this.Type} {this.Province} {this.Season}";
     }
 
     /// <summary>
