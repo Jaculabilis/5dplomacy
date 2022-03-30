@@ -13,18 +13,13 @@ public class TimeTravelTest
     {
         TestCaseBuilder setup = new(World.WithStandardMap());
 
-        // Hold once so the timeline has a past.
+        // Hold to move into the future, then move back into the past.
         setup[(0, 0)]
             .GetReference(out Season s0)
             ["Germany"]
-                .Army("Mun").Holds().GetReference(out var mun0);
-
-        setup.ValidateOrders(MovementPhaseAdjudicator.Instance);
-        setup.AdjudicateOrders(MovementPhaseAdjudicator.Instance);
-        setup.UpdateWorld(MovementPhaseAdjudicator.Instance);
-
-        // Move into the past of the same timeline.
-        setup[(1, 0)]
+                .Army("Mun").Holds().GetReference(out var mun0)
+            .Execute(MovementPhaseAdjudicator.Instance)
+        [(1, 0)]
             .GetReference(out Season s1)
             ["Germany"]
                 .Army("Mun").MovesTo("Tyr", season: s0).GetReference(out var mun1);

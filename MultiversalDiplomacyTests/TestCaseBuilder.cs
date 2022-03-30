@@ -168,6 +168,11 @@ public class TestCaseBuilder
     public interface IOrderDefinedContext<OrderType> where OrderType : Order
     {
         /// <summary>
+        /// Perform validation, adjudication, and update using the defined orders.
+        /// </summary>
+        public TestCaseBuilder Execute(IPhaseAdjudicator adjudicator);
+
+        /// <summary>
         /// Choose a new season to define orders for.
         /// </summary>
         public ISeasonContext this[(int turn, int timeline) seasonCoord] { get; }
@@ -577,6 +582,14 @@ public class TestCaseBuilder
             this.PowerContext = unitContext.PowerContext;
             this.UnitContext = unitContext;
             this.Order = order;
+        }
+
+        public TestCaseBuilder Execute(IPhaseAdjudicator adjudicator)
+        {
+            this.Builder.ValidateOrders(adjudicator);
+            this.Builder.AdjudicateOrders(adjudicator);
+            this.Builder.UpdateWorld(adjudicator);
+            return this.Builder;
         }
 
         public ISeasonContext this[(int turn, int timeline) seasonCoord]
