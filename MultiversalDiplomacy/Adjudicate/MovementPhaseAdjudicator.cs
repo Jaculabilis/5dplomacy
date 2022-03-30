@@ -1,3 +1,5 @@
+using System.Collections.ObjectModel;
+
 using MultiversalDiplomacy.Adjudicate.Decision;
 using MultiversalDiplomacy.Model;
 using MultiversalDiplomacy.Orders;
@@ -266,23 +268,21 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
     public List<AdjudicationDecision> AdjudicateOrders(World world, List<Order> orders)
     {
         // Define all adjudication decisions to be made.
-        MovementDecisions decisions = new(orders);
-
-        List<AdjudicationDecision> unresolvedDecisions = decisions.Values.ToList();
+        MovementDecisions decisions = new(world, orders);
 
         // Adjudicate all decisions.
         bool progress = false;
         do
         {
             progress = false;
-            foreach (AdjudicationDecision decision in unresolvedDecisions.ToList())
+            foreach (AdjudicationDecision decision in decisions.Values)
             {
+                // This will noop without progress if the decision is already resolved
                 progress |= ResolveDecision(decision, world, decisions);
-                if (decision.Resolved) unresolvedDecisions.Remove(decision);
             }
         } while (progress);
 
-        if (unresolvedDecisions.Any())
+        if (decisions.Values.Any(d => !d.Resolved))
         {
             throw new ApplicationException("Some orders not resolved!");
         }
@@ -355,12 +355,23 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
             }
         }
 
+        // Sort the new orders by season to save for posterity in case of attacks from the future.
+        IEnumerable<KeyValuePair<Season, ReadOnlyCollection<Order>>> newOrders = decisions
+            .OfType<IsDislodged>()
+            .GroupBy(
+                keySelector: d => d.Order.Unit.Season,
+                elementSelector: d => d.Order as Order)
+            .Where(group => !world.GivenOrders.ContainsKey(group.Key))
+            .Select(group => new KeyValuePair<Season, ReadOnlyCollection<Order>>(
+                group.Key, new(group.ToList())));
+
         // TODO provide more structured information about order outcomes
 
         World updated = world.Update(
             seasons: world.Seasons.Concat(createdFutures.Values),
             units: world.Units.Concat(createdUnits),
-            retreats: retreats);
+            retreats: retreats,
+            orders: world.GivenOrders.Concat(newOrders));
 
         return updated;
     }

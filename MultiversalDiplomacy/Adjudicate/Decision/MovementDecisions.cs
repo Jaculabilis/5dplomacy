@@ -24,7 +24,7 @@ public class MovementDecisions
         .Concat(this.PreventStrength.Values)
         .Concat(this.DoesMove.Values);
 
-    public MovementDecisions(List<Order> orders)
+    public MovementDecisions(World world, List<Order> orders)
     {
         this.IsDislodged = new();
         this.HasPath = new();
@@ -35,6 +35,50 @@ public class MovementDecisions
         this.PreventStrength = new();
         this.DoesMove = new();
 
+        // Record which seasons are referenced by the order set.
+        HashSet<Season> orderedSeasons = new();
+        foreach (UnitOrder order in orders.Cast<UnitOrder>())
+        {
+            _ = orderedSeasons.Add(order.Unit.Season);
+        }
+
+        // Expand the order list to include any other seasons that are potentially affected.
+        // In the event that those seasons don't end up affected (all moves to it fail, all
+        // supports to it are cut), it is still safe to re-adjudicate everything because
+        // adjudication is deterministic and doesn't produce side effects.
+        HashSet<Season> affectedSeasons = new();
+        foreach (Order order in orders)
+        {
+            switch (order)
+            {
+                case MoveOrder move:
+                    if (!orderedSeasons.Contains(move.Season))
+                    {
+                        affectedSeasons.Add(move.Season);
+                    }
+                    break;
+
+                case SupportHoldOrder supportHold:
+                    if (!orderedSeasons.Contains(supportHold.Target.Season))
+                    {
+                        affectedSeasons.Add(supportHold.Target.Season);
+                    }
+                    break;
+
+                case SupportMoveOrder supportMove:
+                    if (!orderedSeasons.Contains(supportMove.Target.Season))
+                    {
+                        affectedSeasons.Add(supportMove.Target.Season);
+                    }
+                    break;
+            }
+        }
+        foreach (Season season in affectedSeasons)
+        {
+            orders.AddRange(world.GivenOrders[season]);
+        }
+
+        // Create the relevant decisions for each order.
         foreach (UnitOrder order in orders.Cast<UnitOrder>())
         {
             // Create a dislodge decision for this unit.

@@ -76,7 +76,13 @@ public class TestCaseBuilder
         /// <summary>
         /// Give the unit a move order.
         /// </summary>
-        public IOrderDefinedContext<MoveOrder> MovesTo(string provinceName, string? coast = null);
+        /// <param name="season">
+        /// The destination season. If not specified, defaults to the same season as the unit.
+        /// </param>
+        public IOrderDefinedContext<MoveOrder> MovesTo(
+            string provinceName,
+            Season? season = null,
+            string? coast = null);
 
         /// <summary>
         /// Give the unit a convoy order.
@@ -372,15 +378,19 @@ public class TestCaseBuilder
             return new OrderDefinedContext<HoldOrder>(this, order);
         }
 
-        public IOrderDefinedContext<MoveOrder> MovesTo(string provinceName, string? coast = null)
+        public IOrderDefinedContext<MoveOrder> MovesTo(
+            string provinceName,
+            Season? season = null,
+            string? coast = null)
         {
             Location destination = this.Unit.Type == UnitType.Army
                 ? this.Builder.World.GetLand(provinceName)
                 : this.Builder.World.GetWater(provinceName, coast);
+            Season destSeason = season ?? this.SeasonContext.Season;
             MoveOrder moveOrder = new MoveOrder(
                 this.PowerContext.Power,
                 this.Unit,
-                this.SeasonContext.Season,
+                destSeason,
                 destination);
             this.Builder.OrderList.Add(moveOrder);
             return new OrderDefinedContext<MoveOrder>(this, moveOrder);

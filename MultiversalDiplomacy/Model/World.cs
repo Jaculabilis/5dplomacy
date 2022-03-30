@@ -1,5 +1,7 @@
 using System.Collections.ObjectModel;
 
+using MultiversalDiplomacy.Orders;
+
 namespace MultiversalDiplomacy.Model;
 
 /// <summary>
@@ -38,6 +40,11 @@ public class World
     public ReadOnlyCollection<RetreatingUnit> RetreatingUnits { get; }
 
     /// <summary>
+    /// Orders given to units in each season.
+    /// </summary>
+    public ReadOnlyDictionary<Season, ReadOnlyCollection<Order>> GivenOrders { get; }
+
+    /// <summary>
     /// Immutable game options.
     /// </summary>
     public Options Options { get; }
@@ -52,6 +59,7 @@ public class World
         Season rootSeason,
         ReadOnlyCollection<Unit> units,
         ReadOnlyCollection<RetreatingUnit> retreatingUnits,
+        ReadOnlyDictionary<Season, ReadOnlyCollection<Order>> givenOrders,
         Options options)
     {
         this.Provinces = provinces;
@@ -60,6 +68,7 @@ public class World
         this.RootSeason = rootSeason;
         this.Units = units;
         this.RetreatingUnits = retreatingUnits;
+        this.GivenOrders = givenOrders;
         this.Options = options;
     }
 
@@ -73,6 +82,7 @@ public class World
         ReadOnlyCollection<Season>? seasons = null,
         ReadOnlyCollection<Unit>? units = null,
         ReadOnlyCollection<RetreatingUnit>? retreatingUnits = null,
+        ReadOnlyDictionary<Season, ReadOnlyCollection<Order>>? givenOrders = null,
         Options? options = null)
         : this(
             provinces ?? previous.Provinces,
@@ -81,6 +91,7 @@ public class World
             previous.RootSeason,  // Can't change the root season
             units ?? previous.Units,
             retreatingUnits ?? previous.RetreatingUnits,
+            givenOrders ?? previous.GivenOrders,
             options ?? previous.Options)
     {
     }
@@ -98,6 +109,7 @@ public class World
             root,
             new(new List<Unit>()),
             new(new List<RetreatingUnit>()),
+            new(new Dictionary<Season, ReadOnlyCollection<Order>>()),
             new Options());
     }
 
@@ -110,12 +122,22 @@ public class World
     public World Update(
         IEnumerable<Season>? seasons = null,
         IEnumerable<Unit>? units = null,
-        IEnumerable<RetreatingUnit>? retreats = null)
+        IEnumerable<RetreatingUnit>? retreats = null,
+        IEnumerable<KeyValuePair<Season, ReadOnlyCollection<Order>>>? orders = null)
         => new World(
             previous: this,
-            seasons: seasons == null ? this.Seasons : new(seasons.ToList()),
-            units: units == null ? this.Units : new(units.ToList()),
-            retreatingUnits: retreats == null ? this.RetreatingUnits : new(retreats.ToList()));
+            seasons: seasons == null
+                ? this.Seasons
+                : new(seasons.ToList()),
+            units: units == null
+                ? this.Units
+                : new(units.ToList()),
+            retreatingUnits: retreats == null
+                ? this.RetreatingUnits
+                : new(retreats.ToList()),
+            givenOrders: orders == null
+                ? this.GivenOrders
+                : new(orders.ToDictionary(kvp => kvp.Key, kvp => kvp.Value)));
 
     /// <summary>
     /// Create a new world with new units created from unit specs. Units specs are in the format
