@@ -34,6 +34,11 @@ public class SupportMoveOrder : SupportOrder
         this.Location = location;
     }
 
+    public override string ToString()
+    {
+        return $"{this.Unit} supports {this.Target} -> {this.Province} {this.Season}";
+    }
+
     public bool IsSupportFor(MoveOrder move)
         => this.Target == move.Unit
         && this.Season == move.Season

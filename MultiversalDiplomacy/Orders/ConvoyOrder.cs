@@ -34,4 +34,9 @@ public class ConvoyOrder : UnitOrder
         this.Season = season;
         this.Location = location;
     }
+
+    public override string ToString()
+    {
+        return $"{this.Unit} convoys {this.Target} -> {this.Province} {this.Season}";
+    }
 }

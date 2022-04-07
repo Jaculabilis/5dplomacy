@@ -34,6 +34,11 @@ public class MoveOrder : UnitOrder
         this.Location = location;
     }
 
+    public override string ToString()
+    {
+        return $"{this.Unit} -> {this.Province} {this.Season}";
+    }
+
     /// <summary>
     /// Returns whether another move order is in a head-to-head battle with this order.
     /// </summary>

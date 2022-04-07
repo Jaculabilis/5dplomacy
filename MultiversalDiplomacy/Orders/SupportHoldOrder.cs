@@ -11,4 +11,9 @@ public class SupportHoldOrder : SupportOrder
         : base (power, unit, target)
     {
     }
+
+    public override string ToString()
+    {
+        return $"{this.Unit} supports {this.Target}";
+    }
 }
