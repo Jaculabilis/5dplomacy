@@ -218,9 +218,8 @@ public class World
     {
         string provinceNameUpper = provinceName.ToUpperInvariant();
         Province? foundProvince = provinces.SingleOrDefault(
-            p => p != null &&
-                (p.Name.ToUpperInvariant() == provinceNameUpper
-                || p.Abbreviations.Any(a => a.ToUpperInvariant() == provinceNameUpper)),
+            p => p!.Name.ToUpperInvariant() == provinceNameUpper
+                || p.Abbreviations.Any(a => a.ToUpperInvariant() == provinceNameUpper),
             null);
         if (foundProvince == null) throw new KeyNotFoundException(
             $"Province {provinceName} not found");
@@ -260,7 +259,7 @@ public class World
     public Season GetSeason(int turn, int timeline)
     {
         Season? foundSeason = this.Seasons.SingleOrDefault(
-            s => s != null && s.Turn == turn && s.Timeline == timeline,
+            s => s!.Turn == turn && s.Timeline == timeline,
             null);
         if (foundSeason == null) throw new KeyNotFoundException(
             $"Season {turn}:{timeline} not found");
@@ -273,9 +272,7 @@ public class World
     public Power GetPower(string powerName)
     {
         Power? foundPower = this.Powers.SingleOrDefault(
-            p =>
-                p != null
-                && (p.Name == powerName || p.Name.StartsWith(powerName)),
+            p => p!.Name == powerName || p.Name.StartsWith(powerName),
             null);
         if (foundPower == null) throw new KeyNotFoundException(
             $"Power {powerName} not found");
@@ -291,7 +288,7 @@ public class World
         seasonCoord ??= (this.RootSeason.Turn, this.RootSeason.Timeline);
         Season season = GetSeason(seasonCoord.Value.turn, seasonCoord.Value.timeline);
         Unit? foundUnit = this.Units.SingleOrDefault(
-            u => u != null && u.Province == province && u.Season == season,
+            u => u!.Province == province && u.Season == season,
             null);
         if (foundUnit == null) throw new KeyNotFoundException(
             $"Unit at {province} at {season} not found");

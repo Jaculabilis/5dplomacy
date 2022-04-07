@@ -174,7 +174,7 @@ public class Season
             for (Season? branchSeason = timelineRoot;
                 branchSeason != null && branchSeason.Turn <= this.Turn + 1;
                 branchSeason = branchSeason.FutureList
-                    .FirstOrDefault(s => s?.Timeline == branchSeason.Timeline, null))
+                    .FirstOrDefault(s => s!.Timeline == branchSeason.Timeline, null))
             {
                 if (branchSeason.Turn >= this.Turn - 1) adjacents.Add(branchSeason);
             }
