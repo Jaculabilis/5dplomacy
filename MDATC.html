@@ -1,0 +1,672 @@
+<html>
+<head>
+<title>Multiversal Diplomacy Adjudicator Test Cases</title>
+<style>
+    div.figures {
+        display: inline-block;
+    }
+    div.figures canvas {
+        display: none;
+        margin: 4px;
+        float: left;
+        border: 1px solid black;
+    }
+    details {
+        margin-block-start: 1em;
+        margin-block-end: 1em;
+    }
+    details summary { 
+        cursor: pointer;
+    }
+    details summary > * {
+        display: inline;
+    }
+</style>
+<script>
+    const SEASON_PADXL = 10;
+    const SEASON_PADXR = 30;
+    const SEASON_PADY = 10;
+    const SEASON_W = 200;
+    const SEASON_H = 200;
+    const SEASON_W_PADDED = SEASON_PADXL + SEASON_W + SEASON_PADXR;
+    const SEASON_H_PADDED = SEASON_PADY + SEASON_H + SEASON_PADY;
+    const GRID_W = 40;
+    const GRID_H = 40;
+    const ARROW_LEN = 8;
+    const CENTERS = {
+        Mun: [2.0, 2.0],
+        Boh: [4.0, 2.5],
+        Tyr: [2.5, 4.0],
+    };
+    const BORDERS = {
+        Mun: [0, 3, 1, 1, 4, 0, 4, 1, 3, 2, 3, 3],
+        Boh: [4, 1, 5, 2, 5, 3, 3, 3, 3, 2],
+        Tyr: [0, 3, 4, 3, 4, 5, 1, 5],
+    };
+
+    // Setup function
+    function SizeForGrid(canvas, gridW, gridH)
+    {
+        canvas.width = gridW * SEASON_W_PADDED;
+        canvas.height = gridH * SEASON_H_PADDED;
+        canvas.style.display = "block";
+    }
+
+    // Helper function to set all stroke style settings at once
+    function SetStrokeStyle(ctx, style)
+    {
+        ctx.lineWidth = "width" in style ? style.width : 2;
+        ctx.strokeStyle = "color" in style ? style.color : "#000";
+        let lineDash = "dash" in style && style.dash ? [4, 8] : [];
+        ctx.setLineDash(lineDash);
+    }
+
+    // Draw a straight timeline
+    function DrawTimeline(ctx, season1X, season1Y, season2X, season2Y)
+    {
+        ctx.beginPath();
+        ctx.moveTo(
+            SEASON_W_PADDED * season1X + SEASON_PADXL + SEASON_W / 2,
+            SEASON_H_PADDED * season1Y + SEASON_PADY + SEASON_H / 2);
+        ctx.lineTo(
+            SEASON_W_PADDED * season2X + SEASON_PADXL + SEASON_W / 2,
+            SEASON_H_PADDED * season2Y + SEASON_PADY + SEASON_H / 2);
+        SetStrokeStyle(ctx, {width: 40, color: 'cornflowerblue'});
+        ctx.stroke();
+    }
+
+    // Draw the beginning of a forked timeline
+    function DrawFork(ctx, season1X, season1Y, season2X, season2Y)
+    {
+        let startX = SEASON_W_PADDED * season1X + SEASON_PADXL + SEASON_W / 2;
+        let startY = SEASON_H_PADDED * season1Y + SEASON_PADY + SEASON_H / 2;
+        let endX = SEASON_W_PADDED * season2X + SEASON_PADXL + SEASON_W / 2;
+        let endY = SEASON_H_PADDED * season2Y + SEASON_PADY + SEASON_H / 2
+        ctx.beginPath();
+        ctx.moveTo(startX, startY);
+        ctx.quadraticCurveTo(endX, startY, endX, endY);
+        SetStrokeStyle(ctx, {width: 40, color: 'cornflowerblue'});
+        ctx.stroke();
+    }
+
+    // Map drawing helper function
+    function DrawProvince(ctx, baseX, baseY, name)
+    {
+        let border = BORDERS[name];
+        ctx.beginPath();
+        let i = 0;
+        ctx.moveTo(baseX + border[0] * GRID_W, baseY + border[1] * GRID_H);
+        for (i = 2; i < border.length; i += 2)
+        {
+            ctx.lineTo(baseX + border[i] * GRID_W, baseY + border[i+1] * GRID_H);
+        }
+        ctx.lineTo(baseX + border[0] * GRID_W, baseY + border[1] * GRID_H);
+        ctx.closePath();
+        SetStrokeStyle(ctx, {width: 1, color: "#000"});
+        ctx.stroke();
+        ctx.fillStyle = 'palegoldenrod';
+        ctx.fill();
+
+        let center = CENTERS[name];
+        ctx.fillStyle = '#000';
+        ctx.font = "12px Arial";
+        ctx.fillText(name, baseX + center[0] * GRID_W - 12, baseY + center[1] * GRID_H - 10);
+    }
+
+    // Draw a copy of the map for a particular season
+    function DrawMap(ctx, seasonX, seasonY, label)
+    {
+        if (!label) label = seasonY + ":" + seasonX;
+
+        let baseX = SEASON_W_PADDED * seasonX + SEASON_PADXL;
+        let baseY = SEASON_H_PADDED * seasonY + SEASON_PADY;
+        DrawProvince(ctx, baseX, baseY, "Tyr");
+        DrawProvince(ctx, baseX, baseY, "Boh");
+        DrawProvince(ctx, baseX, baseY, "Mun");
+
+        ctx.fillStyle = '#000';
+        ctx.font = "14px Arial";
+        ctx.fillText(label, baseX + SEASON_W + 4, baseY + SEASON_H / 2);
+    }
+
+    // Helper function for getting the center point of a province
+    function GetCenter(provinceSpec)
+    {
+        let name = provinceSpec.substring(0, 3);
+        let center = CENTERS[name];
+        let provinceX = parseInt(provinceSpec.substring(6, 7));
+        let provinceY = parseInt(provinceSpec.substring(4, 5));
+        let baseX = SEASON_W_PADDED * provinceX + SEASON_PADXL;
+        let baseY = SEASON_H_PADDED * provinceY + SEASON_PADY;
+        let centerX = baseX + center[0] * GRID_W;
+        let centerY = baseY + center[1] * GRID_H;
+        return { X: centerX, Y: centerY };
+    }
+
+    // Draw a unit on the map
+    function DrawUnit(ctx, provinceSpec, fillStyle)
+    {
+        let center = GetCenter(provinceSpec);
+        ctx.beginPath();
+        ctx.arc(center.X, center.Y, 5, 0, 2 * Math.PI, false);
+        ctx.fillStyle = fillStyle;
+        ctx.fill();
+        SetStrokeStyle(ctx, {width: 2, color: "#000"});
+        ctx.stroke();
+    }
+
+    // Line drawing helper
+    function DrawArrowhead(ctx, fromPt, toPt, style)
+    {
+        let angle = Math.atan2(toPt.Y - fromPt.Y, toPt.X - fromPt.X);
+        ctx.beginPath();
+        ctx.moveTo(toPt.X, toPt.Y);
+        ctx.lineTo(
+            toPt.X - ARROW_LEN * Math.cos(angle - Math.PI / 6),
+            toPt.Y - ARROW_LEN * Math.sin(angle - Math.PI / 6));
+        ctx.lineTo(
+            toPt.X - ARROW_LEN * Math.cos(angle + Math.PI / 6),
+            toPt.Y - ARROW_LEN * Math.sin(angle + Math.PI / 6));
+        ctx.closePath();
+        ctx.fillStyle = "color" in style ? style.color : "#000";
+        ctx.fill();
+    }
+
+    // Function to draw lines between provinces
+    function DrawLine(ctx, srcSpec, destSpec, style)
+    {
+        let src = GetCenter(srcSpec);
+        let dest = GetCenter(destSpec);
+        ctx.beginPath();
+        ctx.moveTo(src.X, src.Y);
+        ctx.lineTo(dest.X, dest.Y);
+        SetStrokeStyle(ctx, style);
+        ctx.stroke();
+        if (style.arrow) DrawArrowhead(ctx, src, dest, style);
+    }
+
+    function DrawQuadratic(ctx, srcSpec, controlSpec, destSpec, style)
+    {
+        let src = GetCenter(srcSpec);
+        let ctl = GetCenter(controlSpec);
+        let dest = GetCenter(destSpec);
+        ctx.beginPath();
+        ctx.moveTo(src.X, src.Y);
+        ctx.quadraticCurveTo(ctl.X, ctl.Y, dest.X, dest.Y);
+        SetStrokeStyle(ctx, style);
+        ctx.stroke();
+        if (style.arrow) DrawArrowhead(ctx, ctl, dest, style);
+    }
+
+    // Figure title
+    function AddTitle(ctx, title)
+    {
+        ctx.fillStyle = '#000';
+        ctx.font = "16px Arial";
+        ctx.fillText(title, 2, 16);
+    }
+</script>
+</head>
+<body>
+<h1>MDATC: MULTIVERSAL DIPLOMACY ADJUDICATOR TEST CASES</h1>
+<p>Diplomacy is the Avalon Hill Game Company's trademark for its game of international intrigue, which game is copyright 1976 by Avalon Hill. Avalon Hill belongs to Hasbro.</p>
+
+<h2>TABLE OF CONTENTS</h2>
+<ul>
+<li><a href="#1">1. INTRODUCTION</a></li>
+<li><a href="#2">2. MULTIVERSAL VARIANT RULES</a></li>
+<ul>
+<li><a href="#2.A">2.A. TIME TRAVEL</a></li>
+<li><a href="#2.B">2.B. ORDER NOTATION</a></li>
+</ul>
+<li><a href="#3">3. TEST CASES</a></li>
+<ul>
+<li><a href="#3.A">3.A. TIMELINE FORKING</a></li>
+</ul>
+</ul>
+
+<a name="1"><h2>1. INTRODUCTION</h2></a>
+<!-- TODO -->
+
+<a name="2"><h2>2. MULTIVERSAL VARIANT RULES</h2></a>
+
+<a name="2.A"><h3>2.A. TIME TRAVEL</h3></a>
+<!-- TODO -->
+
+<a name="2.B"><h3>2.B. ORDER NOTATION</h3></a>
+<p>The order notation in this document is as in DATC, with the following additions for multiversal time travel.</p>
+<ul>
+<li>A season within a particular timeline is designated in the format X:Y, where X is the turn (starting from 0 and advancing with each movement phase) and Y is the timeline number (starting from 0 and advancing with each timeline fork).</li>
+<li>Adjudication is implied to be done between successive seasons. For example, if orders are listed for 0:0 and then for 1:0, it is implied that the orders for 0:0 were adjudicated.</li>
+<li>Units are designated by unit type, province, and season, e.g. "A Munich 1:0". A destination for a move order or support-to-move order is designated by province and season, e.g. "Munich 1:0".
+<ul>
+<li>If season of the ordered unit is not specified, the season is the season to which the orders are being given.</li>
+<li>If the season of a unit supported to hold is not specified, the season is the same season as the supporting unit.</li>
+<li>If the season of the destination of a move order or the season of the destination of a supported move order is not specified, the season is the season of the moving unit.</li>
+<li>For example:
+<pre>Germany 2:0
+A Munich supports A Munich 1:1 - Tyrolia</pre>
+The order here is for Army Munich in 2:0. The move being supported is for Army Munich in 1:1 to move to Tyrolia in 1:1.</li>
+</ul>
+</ul>
+
+<a name="3"><h2>3. TEST CASES</h2></a>
+
+<a name="3.A"><h3>3.A. TIMELINE FORKING</h3></a>
+
+<details open id="3.A.1">
+<summary><h4><a href="#3.A.1">3.A.1</a>. TEST CASE, MOVE INTO OWN PAST FORKS TIMELINE</h4></summary>
+<p>A unit that moves into its own immediate past causes the timeline to fork.</p>
+<pre>
+    Germany 0:0
+    A Munich hold
+
+    Germany 1:0
+    A Munich - Tyrolia 0:0
+</pre>
+<p>A Munich 1:0 moves to Tyrolia 0:0. The main timeline advances to 2:0 with an empty board. A forked timeline advances to 1:1 with armies in Munich and Tyrolia.</p>
+<div class="figures">
+    <canvas id="canvas-3-A-1-before" width="0" height="0"></canvas>
+    <script>
+    (function(){
+        const canvas = document.getElementById("canvas-3-A-1-before");
+        SizeForGrid(canvas, 1, 2);
+        const ctx = canvas.getContext("2d");
+        DrawTimeline(ctx, 0, 0, 0, 1);
+        DrawMap(ctx, 0, 0);
+        DrawMap(ctx, 0, 1);
+        DrawLine(ctx, "Mun 0:0", "Mun 1:0", {color: '#0008', dash: true});
+        DrawLine(ctx, "Mun 1:0", "Tyr 0:0", {arrow: true});
+        DrawUnit(ctx, "Mun 0:0", "red");
+        DrawUnit(ctx, "Mun 1:0", "red");
+        AddTitle(ctx, "3.A.1 before");
+    })();
+    </script>
+    <canvas id="canvas-3-A-1-after" width="0" height="0"></canvas>
+    <script>
+    (function(){
+        const canvas = document.getElementById("canvas-3-A-1-after");
+        SizeForGrid(canvas, 2, 3);
+        const ctx = canvas.getContext("2d");
+        DrawTimeline(ctx, 0, 0, 0, 2);
+        DrawFork(ctx, 0, 0, 1, 1);
+        DrawMap(ctx, 0, 0);
+        DrawMap(ctx, 0, 1);
+        DrawMap(ctx, 0, 2);
+        DrawMap(ctx, 1, 1);
+        DrawLine(ctx, "Mun 1:0", "Tyr 0:0", {color: '#0008', arrow: true});
+        DrawLine(ctx, "Mun 0:0", "Mun 1:1", {dash: true});
+        DrawLine(ctx, "Tyr 0:0", "Tyr 1:1", {dash: true});
+        DrawUnit(ctx, "Mun 0:0", "red");
+        DrawUnit(ctx, "Mun 1:0", "red");
+        DrawUnit(ctx, "Mun 1:1", "red");
+        DrawUnit(ctx, "Tyr 1:1", "red");
+        AddTitle(ctx, "3.A.1 after");
+    })();
+    </script>
+</div>
+</details>
+
+<details open id="3.A.2">
+<summary><h4><a href="#3.A.2">3.A.2</a>. TEST CASE, SUPPORT TO REPELLED PAST MOVE FORKS TIMELINE</h4></summary>
+<p>A unit that supports a move that previously failed in the past, such that it now succeeds, causes the timeline to fork.</p>
+<pre>
+    Austria 0:0
+    A Tyrolia hold
+
+    Germany 0:0
+    A Munich - Tyrolia
+
+    Austria 1:0
+    A Tyrolia hold
+
+    Germany 1:0
+    A Munich supports A Munich 0:0 - Tyrolia 0:0
+</pre>
+<p>With the support from A Munich 1:0, A Munich 0:0 dislodges A Tyrolia 0:0. A forked timeline advances to 1:1 where A Tyrolia 0:0 has been dislodged. The main timeline advances to 2:0 where A Munich and A Tyrolia are in their initial positions.</p>
+<div class="figures">
+    <canvas id="canvas-3-A-2-before" width="0" height="0"></canvas>
+    <script>
+    (function(){
+        const canvas = document.getElementById("canvas-3-A-2-before");
+        SizeForGrid(canvas, 1, 2);
+        const ctx = canvas.getContext("2d");
+        DrawTimeline(ctx, 0, 0, 0, 1);
+        DrawMap(ctx, 0, 0);
+        DrawMap(ctx, 0, 1);
+        DrawLine(ctx, "Mun 0:0", "Tyr 0:0", {arrow: true, color: '#0008'});
+        DrawLine(ctx, "Mun 0:0", "Mun 1:0", {dash: true, color: '#0008'});
+        DrawLine(ctx, "Tyr 0:0", "Tyr 1:0", {dash: true, color: '#0008'});
+        DrawQuadratic(ctx, "Mun 1:0", "Mun 0:0", "Tyr 0:0", {arrow: true});
+        DrawUnit(ctx, "Mun 0:0", "red");
+        DrawUnit(ctx, "Tyr 0:0", "green");
+        DrawUnit(ctx, "Mun 1:0", "red");
+        DrawUnit(ctx, "Tyr 1:0", "green");
+        AddTitle(ctx, "3.A.2 before");
+    })();
+    </script>
+    <canvas id="canvas-3-A-2-after" width="0" height="0"></canvas>
+    <script>
+    (function(){
+        const canvas = document.getElementById("canvas-3-A-2-after");
+        SizeForGrid(canvas, 2, 3);
+        const ctx = canvas.getContext("2d");
+        DrawTimeline(ctx, 0, 0, 0, 2);
+        DrawFork(ctx, 0, 0, 1, 1);
+        DrawMap(ctx, 0, 0);
+        DrawMap(ctx, 0, 1);
+        DrawMap(ctx, 0, 2);
+        DrawMap(ctx, 1, 1);
+        DrawLine(ctx, "Mun 0:0", "Tyr 0:0", {arrow: true, color: '#0008'});
+        DrawQuadratic(ctx, "Mun 1:0", "Mun 0:0", "Tyr 0:0", {arrow: true, color: '#0008'});
+        DrawLine(ctx, "Mun 1:0", "Mun 2:0", {dash: true});
+        DrawLine(ctx, "Tyr 1:0", "Tyr 2:0", {dash: true});
+        DrawLine(ctx, "Tyr 0:0", "Tyr 1:1", {dash: true});
+        DrawUnit(ctx, "Mun 0:0", "red");
+        DrawUnit(ctx, "Tyr 0:0", "green");
+        DrawUnit(ctx, "Mun 1:0", "red");
+        DrawUnit(ctx, "Tyr 1:0", "green");
+        DrawUnit(ctx, "Mun 2:0", "red");
+        DrawUnit(ctx, "Tyr 2:0", "green");
+        DrawUnit(ctx, "Tyr 1:1", "red");
+        AddTitle(ctx, "3.A.2 after");
+    })();
+    </script>
+</div>
+</details>
+
+<details open id="3.A.3">
+<summary><h4><a href="#3.A.3">3.A.3</a>. TEST CASE, FAILED MOVE DOES NOT FORK TIMELINE</h4></summary>
+<p>A unit that attempts to move into the past, but is repelled, does not cause the timeline to fork.</p>
+<pre>
+    Austria 0:0
+    A Tyrolia hold
+
+    Germany 0:0
+    A Munich hold
+
+    Austria 1:0
+    A Tyrolia hold
+
+    Germany 1:0
+    A Munich - Tyrolia 0:0
+</pre>
+<p>The move by A Munich 1:0 fails. The main timeline advances to 2:0 with both armies in their initial positions. No alternate timeline is created.</p>
+<div class="figures">
+    <canvas id="canvas-3-A-3-before" width="0" height="0"></canvas>
+    <script>
+    (function(){
+        const canvas = document.getElementById("canvas-3-A-3-before");
+        SizeForGrid(canvas, 1, 2);
+        const ctx = canvas.getContext("2d");
+        DrawTimeline(ctx, 0, 0, 0, 1);
+        DrawMap(ctx, 0, 0);
+        DrawMap(ctx, 0, 1);
+        DrawLine(ctx, "Mun 0:0", "Mun 1:0", {dash: true, color: '#0008'});
+        DrawLine(ctx, "Tyr 0:0", "Tyr 1:0", {dash: true, color: '#0008'});
+        DrawLine(ctx, "Mun 1:0", "Tyr 0:0", {arrow: true});
+        DrawUnit(ctx, "Mun 0:0", "red");
+        DrawUnit(ctx, "Tyr 0:0", "green");
+        DrawUnit(ctx, "Mun 1:0", "red");
+        DrawUnit(ctx, "Tyr 1:0", "green");
+        AddTitle(ctx, "3.A.3 before");
+    })();
+    </script>
+    <canvas id="canvas-3-A-3-after" width="0" height="0"></canvas>
+    <script>
+    (function(){
+        const canvas = document.getElementById("canvas-3-A-3-after");
+        SizeForGrid(canvas, 1, 3);
+        const ctx = canvas.getContext("2d");
+        DrawTimeline(ctx, 0, 0, 0, 2);
+        DrawMap(ctx, 0, 0);
+        DrawMap(ctx, 0, 1);
+        DrawMap(ctx, 0, 2);
+        DrawLine(ctx, "Mun 1:0", "Tyr 0:0", {arrow: true, color: '#0008'});
+        DrawLine(ctx, "Mun 1:0", "Mun 2:0", {dash: true});
+        DrawLine(ctx, "Tyr 1:0", "Tyr 2:0", {dash: true});
+        DrawUnit(ctx, "Mun 0:0", "red");
+        DrawUnit(ctx, "Tyr 0:0", "green");
+        DrawUnit(ctx, "Mun 1:0", "red");
+        DrawUnit(ctx, "Tyr 1:0", "green");
+        DrawUnit(ctx, "Mun 2:0", "red");
+        DrawUnit(ctx, "Tyr 2:0", "green");
+        AddTitle(ctx, "3.A.3 after");
+    })();
+    </script>
+</div>
+</details>
+
+<details open id="3.A.4">
+<summary><h4><a href="#3.A.4">3.A.4</a>. TEST CASE, SUPERFLUOUS SUPPORT DOES NOT FORK TIMELINE</h4></summary>
+<p>A unit that supports a move that succeeded in the past and still succeeds after the additional future support does not cause the timeline to fork.</p>
+<pre>
+    Germany 0:0
+    A Munich - Tyrolia
+    A Bohemia hold
+
+    Germany 1:0
+    A Tyrolia hold
+    A Bohemia supports A Munich 0:0 - Tyrolia
+</pre>
+<p>Both units in 1:0 continue to 2:0. No alternate timeline is created.</p>
+<div class="figures">
+    <canvas id="canvas-3-A-4-before" width="0" height="0"></canvas>
+    <script>
+    (function(){
+        const canvas = document.getElementById("canvas-3-A-4-before");
+        SizeForGrid(canvas, 1, 2);
+        const ctx = canvas.getContext("2d");
+        DrawTimeline(ctx, 0, 0, 0, 1);
+        DrawMap(ctx, 0, 0);
+        DrawMap(ctx, 0, 1);
+        DrawLine(ctx, "Mun 0:0", "Tyr 0:0", {arrow: true, color: '#0008'});
+        DrawLine(ctx, "Tyr 0:0", "Tyr 1:0", {dash: true, color: '#0008'});
+        DrawLine(ctx, "Boh 0:0", "Boh 1:0", {dash: true, color: '#0008'});
+        DrawQuadratic(ctx, "Boh 1:0", "Mun 0:0", "Tyr 0:0", {arrow: true});
+        DrawUnit(ctx, "Mun 0:0", "red");
+        DrawUnit(ctx, "Boh 0:0", "red");
+        DrawUnit(ctx, "Tyr 1:0", "red");
+        DrawUnit(ctx, "Boh 1:0", "red");
+        AddTitle(ctx, "3.A.4 before");
+    })();
+    </script>
+    <canvas id="canvas-3-A-4-after" width="0" height="0"></canvas>
+    <script>
+    (function(){
+        const canvas = document.getElementById("canvas-3-A-4-after");
+        SizeForGrid(canvas, 1, 3);
+        const ctx = canvas.getContext("2d");
+        DrawTimeline(ctx, 0, 0, 0, 2);
+        DrawMap(ctx, 0, 0);
+        DrawMap(ctx, 0, 1);
+        DrawMap(ctx, 0, 2);
+        DrawLine(ctx, "Mun 0:0", "Tyr 0:0", {arrow: true, color: '#0008'});
+        DrawQuadratic(ctx, "Boh 1:0", "Mun 0:0", "Tyr 0:0", {arrow: true, color: '#0008'});
+        DrawLine(ctx, "Tyr 1:0", "Tyr 2:0", {dash: true});
+        DrawLine(ctx, "Boh 1:0", "Boh 2:0", {dash: true});
+        DrawUnit(ctx, "Mun 0:0", "red");
+        DrawUnit(ctx, "Boh 0:0", "red");
+        DrawUnit(ctx, "Tyr 1:0", "red");
+        DrawUnit(ctx, "Boh 1:0", "red");
+        DrawUnit(ctx, "Tyr 2:0", "red");
+        DrawUnit(ctx, "Boh 2:0", "red");
+        AddTitle(ctx, "3.A.4 after");
+    })();
+    </script>
+</div>
+</details>
+
+<details open id="3.A.5">
+<summary><h4><a href="#3.A.5">3.A.5</a>. TEST CASE, CROSS-TIMELINE SUPPORT DOES NOT FORK HEAD</h4></summary>
+<p>In this test case, a unit elsewhere on the map moves into the past to cause a timeline fork. Once there are two parallel timelines, a support from one to the head of the other should not cause any forking, since timeline forks only occur when the past changes, not the present.</p>
+<pre>
+    Austria
+    A Tyrolia 2:0 hold
+    A Tyrolia 1:1 hold
+
+    Germany
+    A Munich 2:0 - Tyrolia
+    A Munich 1:1 supports A Munich 2:0 - Tyrolia
+</pre>
+<p>A Munich 2:0 dislodges A Tyrolia 2:0. No alternate timeline is created.</p>
+<div class="figures">
+    <canvas id="canvas-3-A-5-before" width="0" height="0"></canvas>
+    <script>
+    (function(){
+        const canvas = document.getElementById("canvas-3-A-5-before");
+        SizeForGrid(canvas, 2, 2);
+        const ctx = canvas.getContext("2d");
+        DrawTimeline(ctx, 0, -1, 0, 1);
+        DrawFork(ctx, 0, -1, 1, 0);
+        DrawMap(ctx, 0, 1, "2:0");
+        DrawMap(ctx, 1, 0, "1:1");
+        DrawLine(ctx, "Mun 1:0", "Tyr 1:0", {arrow: true});
+        DrawQuadratic(ctx, "Mun 0:1", "Mun 1:0", "Tyr 1:0", {arrow: true});
+        DrawUnit(ctx, "Mun 1:0", "red");
+        DrawUnit(ctx, "Tyr 1:0", "green");
+        DrawUnit(ctx, "Mun 0:1", "red");
+        DrawUnit(ctx, "Tyr 0:1", "green");
+        AddTitle(ctx, "3.A.5 before");
+    })();
+    </script>
+    <canvas id="canvas-3-A-5-after" width="0" height="0"></canvas>
+    <script>
+    (function(){
+        const canvas = document.getElementById("canvas-3-A-5-after");
+        SizeForGrid(canvas, 2, 3);
+        const ctx = canvas.getContext("2d");
+        DrawTimeline(ctx, 0, -1, 0, 2);
+        DrawFork(ctx, 0, -1, 1, 0);
+        DrawTimeline(ctx, 1, 0, 1, 1);
+        DrawMap(ctx, 0, 1, "2:0");
+        DrawMap(ctx, 0, 2, "3:0");
+        DrawMap(ctx, 1, 0, "1:1");
+        DrawMap(ctx, 1, 1, "2:1");
+        DrawLine(ctx, "Mun 1:0", "Tyr 1:0", {arrow: true, color: '#0008'});
+        DrawQuadratic(ctx, "Mun 0:1", "Mun 1:0", "Tyr 1:0", {arrow: true, color: '#0008'});
+        DrawLine(ctx, "Tyr 1:0", "Tyr 2:0", {dash: true})
+        DrawLine(ctx, "Mun 0:1", "Mun 1:1", {dash: true})
+        DrawLine(ctx, "Tyr 0:1", "Tyr 1:1", {dash: true})
+        DrawUnit(ctx, "Mun 1:0", "red");
+        DrawUnit(ctx, "Tyr 1:0", "green");
+        DrawUnit(ctx, "Tyr 2:0", "red");
+        DrawUnit(ctx, "Mun 0:1", "red");
+        DrawUnit(ctx, "Tyr 0:1", "green");
+        DrawUnit(ctx, "Mun 1:1", "red");
+        DrawUnit(ctx, "Tyr 1:1", "green");
+        AddTitle(ctx, "3.A.5 after");
+    })();
+    </script>
+</div>
+</details>
+
+
+<details open id="3.A.6">
+<summary><h4><a href="#3.A.6">3.A.6</a>. TEST CASE, CUTTING CROSS-TIMELINE SUPPORT DOES NOT FORK</h4></summary>
+<p>Following <a href="#3.A.5">3.A.5</a>, a cross-timeline support that previously succeeded is cut.</p>
+<pre>
+    Germany
+    A Munich 2:0 - Tyrolia
+    A Munich 1:1 supports A Munich 2:0 - Tyrolia
+
+    Austria
+    A Tyrolia 2:0 holds
+    A Tyrolia 1:1 holds
+
+    Germany
+    A Tyrolia 3:0 holds
+    A Munich 2:1 holds
+
+    Austria
+    A Tyrolia 2:1 - Munich 1:1
+</pre>
+<p>Cutting the support does not change the past or cause a timeline fork.</p>
+<div class="figures">
+    <canvas id="canvas-3-A-6-before" width="0" height="0"></canvas>
+    <script>
+    (function(){
+        const canvas = document.getElementById("canvas-3-A-6-before");
+        SizeForGrid(canvas, 2, 3);
+        const ctx = canvas.getContext("2d");
+        DrawTimeline(ctx, 0, -1, 0, 2);
+        DrawFork(ctx, 0, -1, 1, 0);
+        DrawTimeline(ctx, 1, 0, 1, 1);
+        DrawMap(ctx, 0, 1, "2:0");
+        DrawMap(ctx, 0, 2, "3:0");
+        DrawMap(ctx, 1, 0, "1:1");
+        DrawMap(ctx, 1, 1, "2:1");
+        DrawLine(ctx, "Mun 1:0", "Tyr 1:0", {arrow: true, color: '#0008'});
+        DrawQuadratic(ctx, "Mun 0:1", "Mun 1:0", "Tyr 1:0", {arrow: true, color: '#0008'});
+        DrawLine(ctx, "Tyr 1:0", "Tyr 2:0", {dash: true, color: '#0008'})
+        DrawLine(ctx, "Mun 0:1", "Mun 1:1", {dash: true, color: '#0008'})
+        DrawLine(ctx, "Tyr 0:1", "Tyr 1:1", {dash: true, color: '#0008'})
+        DrawLine(ctx, "Tyr 1:1", "Mun 0:1", {arrow: true});
+        DrawUnit(ctx, "Mun 1:0", "red");
+        DrawUnit(ctx, "Tyr 1:0", "green");
+        DrawUnit(ctx, "Tyr 2:0", "red");
+        DrawUnit(ctx, "Mun 0:1", "red");
+        DrawUnit(ctx, "Tyr 0:1", "green");
+        DrawUnit(ctx, "Mun 1:1", "red");
+        DrawUnit(ctx, "Tyr 1:1", "green");
+        AddTitle(ctx, "3.A.6 before");
+    })();
+    </script>
+    <canvas id="canvas-3-A-6-after" width="0" height="0"></canvas>
+    <script>
+    (function(){
+        const canvas = document.getElementById("canvas-3-A-6-after");
+        SizeForGrid(canvas, 2, 4);
+        const ctx = canvas.getContext("2d");
+        DrawTimeline(ctx, 0, -1, 0, 3);
+        DrawFork(ctx, 0, -1, 1, 0);
+        DrawTimeline(ctx, 1, 0, 1, 2);
+        DrawMap(ctx, 0, 1, "2:0");
+        DrawMap(ctx, 0, 2, "3:0");
+        DrawMap(ctx, 0, 3, "4:0");
+        DrawMap(ctx, 1, 0, "1:1");
+        DrawMap(ctx, 1, 1, "2:1");
+        DrawMap(ctx, 1, 2, "3:1");
+        DrawLine(ctx, "Tyr 1:1", "Mun 0:1", {arrow: true, color: '#0008'});
+        DrawLine(ctx, "Tyr 2:0", "Tyr 3:0", {dash: true});
+        DrawLine(ctx, "Tyr 1:1", "Tyr 2:1", {dash: true});
+        DrawLine(ctx, "Mun 1:1", "Mun 2:1", {dash: true});
+        DrawUnit(ctx, "Mun 1:0", "red");
+        DrawUnit(ctx, "Tyr 1:0", "green");
+        DrawUnit(ctx, "Tyr 2:0", "red");
+        DrawUnit(ctx, "Mun 0:1", "red");
+        DrawUnit(ctx, "Tyr 0:1", "green");
+        DrawUnit(ctx, "Mun 1:1", "red");
+        DrawUnit(ctx, "Tyr 1:1", "green");
+        DrawUnit(ctx, "Tyr 3:0", "red");
+        DrawUnit(ctx, "Tyr 2:1", "green");
+        DrawUnit(ctx, "Mun 2:1", "red");
+        AddTitle(ctx, "3.A.6 after");
+    })();
+    </script>
+</div>
+</details>
+
+<!--
+<details open id="X.X.X">
+<summary><h4><a href="#">X.X.X</a>. TEST CASE</h4></summary>
+<p>Description</p>
+<pre>
+</pre>
+<p>Result</p>
+<div class="figures">
+    <canvas id="canvas-X-X-X-before" width="0" height="0"></canvas>
+    <script>
+    (function(){
+        const canvas = document.getElementById("canvas-X-X-X-before");
+    })();
+    </script>
+    <canvas id="canvas-X-X-X-after" width="0" height="0"></canvas>
+    <script>
+    (function(){
+        const canvas = document.getElementById("canvas-X-X-X-after");
+    })();
+    </script>
+</div>
+</details>
+-->

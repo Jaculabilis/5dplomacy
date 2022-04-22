@@ -9,7 +9,7 @@ namespace MultiversalDiplomacyTests;
 public class TimeTravelTest
 {
     [Test]
-    public void MoveIntoOwnPastForksTimeline()
+    public void MDATC_3_A_1_MoveIntoOwnPastForksTimeline()
     {
         TestCaseBuilder setup = new(World.WithStandardMap(), MovementPhaseAdjudicator.Instance);
 
@@ -55,7 +55,7 @@ public class TimeTravelTest
     }
 
     [Test]
-    public void SupportToRepelledPastMoveForksTimeline()
+    public void MDATC_3_A_2_SupportToRepelledPastMoveForksTimeline()
     {
         TestCaseBuilder setup = new(World.WithStandardMap(), MovementPhaseAdjudicator.Instance);
 
@@ -105,7 +105,7 @@ public class TimeTravelTest
     }
 
     [Test]
-    public void FailedMoveDoesNotForkTimeline()
+    public void MDATC_3_A_3_FailedMoveDoesNotForkTimeline()
     {
         TestCaseBuilder setup = new(World.WithStandardMap(), MovementPhaseAdjudicator.Instance);
 
@@ -145,7 +145,7 @@ public class TimeTravelTest
     }
 
     [Test]
-    public void SuperfluousSupportDoesNotForkTimeline()
+    public void MDATC_3_A_4_SuperfluousSupportDoesNotForkTimeline()
     {
         TestCaseBuilder setup = new(World.WithStandardMap(), MovementPhaseAdjudicator.Instance);
 
@@ -187,7 +187,7 @@ public class TimeTravelTest
     }
 
     [Test]
-    public void CrossTimelineSupportDoesNotForkHead()
+    public void MDATC_3_A_5_CrossTimelineSupportDoesNotForkHead()
     {
         TestCaseBuilder setup = new(World.WithStandardMap(), MovementPhaseAdjudicator.Instance);
 
@@ -240,7 +240,7 @@ public class TimeTravelTest
     }
 
     [Test]
-    public void CuttingCrossTimelineSupportDoesNotFork()
+    public void MDATC_3_A_6_CuttingCrossTimelineSupportDoesNotFork()
     {
         TestCaseBuilder setup = new(World.WithStandardMap(), MovementPhaseAdjudicator.Instance);
 
