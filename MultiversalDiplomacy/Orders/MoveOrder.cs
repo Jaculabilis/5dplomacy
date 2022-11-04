@@ -36,7 +36,7 @@ public class MoveOrder : UnitOrder
 
     public override string ToString()
     {
-        return $"{this.Unit} -> {this.Province} {this.Season}";
+        return $"{this.Unit} -> {(this.Province, this.Season).ToShort()}";
     }
 
     /// <summary>

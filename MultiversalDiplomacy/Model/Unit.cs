@@ -51,7 +51,7 @@ public class Unit
 
     public override string ToString()
     {
-        return $"{this.Power} {this.Type} {this.Province} {this.Season}";
+        return $"{this.Power.Name[0]} {this.Type.ToShort()} {(this.Province, this.Season).ToShort()}";
     }
 
     /// <summary>

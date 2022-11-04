@@ -14,6 +14,6 @@ public class SupportHoldOrder : SupportOrder
 
     public override string ToString()
     {
-        return $"{this.Unit} supports {this.Target}";
+        return $"{this.Unit} S {this.Target}";
     }
 }

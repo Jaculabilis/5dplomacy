@@ -37,6 +37,6 @@ public class ConvoyOrder : UnitOrder
 
     public override string ToString()
     {
-        return $"{this.Unit} convoys {this.Target} -> {this.Province} {this.Season}";
+        return $"{this.Unit} C {this.Target} -> {(this.Province, this.Season).ToShort()}";
     }
 }

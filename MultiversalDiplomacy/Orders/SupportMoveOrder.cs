@@ -36,7 +36,7 @@ public class SupportMoveOrder : SupportOrder
 
     public override string ToString()
     {
-        return $"{this.Unit} supports {this.Target} -> {this.Province} {this.Season}";
+        return $"{this.Unit} S {this.Target} -> {(this.Province, this.Season).ToShort()}";
     }
 
     public bool IsSupportFor(MoveOrder move)
