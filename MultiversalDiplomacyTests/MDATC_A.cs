@@ -195,7 +195,7 @@ public class TimeTravelTest
         setup[(0, 0)]
             .GetReference(out var s0_0)
             ["England"].Army("Lon").Holds()
-            ["Austria"].Army("Boh").Holds()
+            ["Austria"].Army("Tyr").Holds()
             ["Germany"].Army("Mun").Holds()
             .Execute()
         [(1, 0)]
