@@ -13,6 +13,7 @@ public class MovementDecisions
     public Dictionary<MoveOrder, DefendStrength> DefendStrength { get; }
     public Dictionary<MoveOrder, PreventStrength> PreventStrength { get; }
     public Dictionary<MoveOrder, DoesMove> DoesMove { get; }
+    public Dictionary<Season, AdvanceTimeline> AdvanceTimeline { get; }
 
     public IEnumerable<AdjudicationDecision> Values =>
         this.IsDislodged.Values.Cast<AdjudicationDecision>()
@@ -22,7 +23,8 @@ public class MovementDecisions
         .Concat(this.AttackStrength.Values)
         .Concat(this.DefendStrength.Values)
         .Concat(this.PreventStrength.Values)
-        .Concat(this.DoesMove.Values);
+        .Concat(this.DoesMove.Values)
+        .Concat(this.AdvanceTimeline.Values);
 
     public MovementDecisions(World world, List<Order> orders)
     {
@@ -34,6 +36,7 @@ public class MovementDecisions
         this.DefendStrength = new();
         this.PreventStrength = new();
         this.DoesMove = new();
+        this.AdvanceTimeline = new();
 
         // Record which seasons are referenced by the order set.
         HashSet<Season> orderedSeasons = new();
