@@ -1,151 +1,29 @@
 # 5D Diplomacy With Multiversal Time Travel
 
-## So you want to conquer Europe with a declarative build system
+_5D Diplomacy with Multiversal Time Travel_ is a _Diplomacy_ variant that adds multiversal time travel in the style of its namesake, _5D Chess with Multiversal Time Travel_.
 
-Let's start out by initializing the project. I always hate this part of projects; it's much easier to pick up something with an established codebase and ecosystem and figure out how to modify it to be slightly different than it is to strain genius from the empty space of possibility _de novo_. The ultimate goal of this project is summoning military aid from beyond space and time, though, so we're going to have to get used to it.
+## Acknowledgements
 
-A `nix flake init` gives us a fairly useless flake template:
+This project was inspired by [Oliver Lugg's proof-of-concept version](https://github.com/Oliveriver/5d-diplomacy-with-multiverse-time-travel). The implementation is based on the algorithms described by Lucas B. Kruijswijk in the chapter "The Process of Adjudication" found in the [Diplomacy Adjudicator Test Cases](http://web.inter.nl.net/users/L.B.Kruijswijk/#5) as well as ["The Math of Adjudication"](http://uk.diplom.org/pouch/Zine/S2009M/Kruijswijk/DipMath_Chp1.htm). Some of the data model is inspired by that of Martin Bruse's [godip](https://github.com/zond/godip).
 
-```
-{
-  description = "A very basic flake";
+## Variant rules
 
-  outputs = { self, nixpkgs }: {
+### Multiversal time travel and timeline forks
 
-    packages.x86_64-linux.hello = nixpkgs.legacyPackages.x86_64-linux.hello;
+_Diplomacy_ is played on a single board, on which are placed armies and fleets. Sequential sets of orders modify the positions of these units, changing the board as time progresses. This may be described as something like an "inner" view of a single timeline. Consider instead the view from "above" the timeline, from which each successive state of the game board is comprehended in sequence. From "above", each turn from the beginning of the game to the present can be considered separately. In _5D Diplomacy with Multiversal Time Travel_, units moving to another province may also move to another turn, potentially changing the past.
 
-    defaultPackage.x86_64-linux = self.packages.x86_64-linux.hello;
+If the outcome of a battle in the past of a timeline is changed by time travel, then the subsequent future will be different. Since the future of the original outcome is already determined, history forks, and the alternate future proceeds in an alternate timeline.
 
-  };
-}
-```
+Just as units in _Diplomacy_ may only move to adjacent spaces, units in _5D Diplomacy with Multiversal Time Travel_ may only move to adjacent times. For the purposes of attacking, supporting, or convoying, turns within one season of each other adjacent. Branching timelines and the timelines they branched off of are adjacent, as well as timelines that branched off of the same turn in the same timeline. A unit cannot move to the province it is currently in, but it can move to the same province in another turn or another timeline.
 
-We're going to replace every line in this file, but at least we got a start. Let's also `git init` and set that part up.
+When a unit changes the outcome of a battle in the past, only the timeline of the battle forks. If an army from one timeline dislodges an army in the past of a second timeline that was supporting a move in a third timeline, an alternate future is created where the army in the second timeline is dislodged. The third timeline does not fork, since the support was given in the original timeline. Similarly, if a unit moves into another timeline and causes a previously-successful move from a third timeline to become a bounce, the destination timeline forks because the outcome of the move changed, but the newly-bounced unit's origin timeline does not fork because the move succeeded in the original timeline.
 
-```
-$ git init
-$ git config --add user.name Jaculabilis
-$ git config --add user.email jaculabilis@git.alogoulogoi.com
-$ git add flake.nix README.md
-$ git commit -m "Initial commit"
-$ git remote add origin gitea@git.alogoulogoi.com:Jaculabilis/5dplomacy.git
-$ git push -u origin master
-```
+### Sustaining timelines and time centers
 
-We're doing this in .NET, so we need the .NET SDK. To do that, we're going to delcare a development environment in the flake config.
+Since there are many ways to create new timelines, the game would rapidly expand beyond all comprehension if this were not counterbalanced in some way. This happens during the _sustain phase_, which occurs after the fall movement and retreat phases and before the winter buid/disband phase.
 
-```
-  inputs.flake-utils.url = "github:numtide/flake-utils";
+(TODO)
 
-  outputs = { self, nixpkgs, flake-utils }:
-    flake-utils.lib.eachDefaultSystem (system:
-      let pkgs = nixpkgs.legacyPackages.${system};
-      in rec {
-        devShell = pkgs.mkShell {
-          packages = [ pkgs.dotnet-sdk ];
-        };
-      }
-    );
-```
+### Victory conditions
 
-Declaring `inputs.flake-utils` adds the `flake-utils` package as a dependency, which just gives us Nix helper functions. What's important here is that the `packages.x86_64-linux.hello` above has been abstracted away behind the `eachDefaultSystem` function: now we define our outputs with the `system` input as context, and flake-utils will define our outputs for each default system.
-
-Basically, stripping the boilerplate, we're just doing this:
-
-```
-rec {
-  devShell = pkgs.mkShell {
-    packages = [ pkgs.dotnet-sdk ];
-  };
-}
-```
-
-`pkgs.mkShell` is the derivation builder that creates shell environments. It takes `packages` as a list of input packages that will be made available in the shell environment it creates. We add `dotnet-sdk` to this, commit the changes to git, and enter our new shell with `nix develop`:
-
-```
-$ which dotnet
-/nix/store/87s452c8wj2zmy21q8q394f6rzf5y1br-dotnet-sdk-6.0.100/bin/dotnet
-```
-
-So now we have our development tools (well, tool). The `dotnet --help` text tells us a few things about telemetry, so let's define a prompt so we know when we're in the nix shell and then set the telemetry opt-out.
-
-```
-shellHook = ''
-  PS1="5dplomacy:\W$ "
-'';
-DOTNET_CLI_TELEMETRY_OPTOUT = 1;
-```
-
-Now let's start creating the project. dotnet has a lot of template options. We'll eventually want to have a web client and server, for true multiplayer, but first we want to build the core infrastructure that we can slap a server on top of. So, we're just going to make a console app for now.
-
-```
-5dplomacy$ dotnet new console -n MultiversalDiplomacy -o MultiversalDiplomacy
-```
-
-.NET 6 makes the Main() method implicit, but this program is going to become more complicated than a single Main(), so let's put the whole boilerplate back.
-
-```
-using System;
-
-namespace MultiversalDiplomacy
-{
-    internal class Program
-    {
-        static void Main(string[] args)
-        {
-            Console.WriteLine("stab");
-        }
-    }
-}
-```
-
-And when we run it through `dotnet`:
-
-```
-5dplomacy$ dotnet run --project MultiversalDiplomacy/
-stab
-```
-
-Neat. VS Code doesn't seamlessly work with nix, so to get the extensions working we'll need to restart it from an existing `nix develop` shell so `dotnet` is on the path. For the integrated terminal, we can creating a profile for `nix develop` and set it as the default profile.
-
-```
-"terminal.integrated.profiles.linux": {
-    "nix develop": {
-        "path": "nix",
-        "args": ["develop"]
-    }
-}
-```
-
-## Comprehending all of time and space
-
-Now for the data model. The state of the world can be described in three layers, so to speak.
-
-1. The board is the same across time and multiverse. Since it consists of (i) provinces and (ii) borders connecting two provinces, we're going  to model it like a graph. However, a simple graph won't work because provinces are differently accessible to armies and fleets, and coasts are part of the same province while having distinct connectivity. Following the data model described in [godip](https://github.com/zond/godip), we will model this by subdividing provinces and making connections between those subdivisions. This will effectively create multiple distinct graphs for fleets and armies within the map, with some nodes grouped for control purposes into provinces. Since the map itself does not change across time, we can make this "layer" completely immutable and shared between turns and timelines.
-2. Since we need to preserve the state of the past in order to time travel effectively, we won't be mutating a board state. Instead, we'll use orders submitted for each turn to append a new copy of the board state. This can't be represented by a simple list, since we can have more than one timeline branch off of a particular turn, so instead we'll use something like a directed graph and create turns pointing to their immediate past.
-3. Given the map of the board and the state of all timelines, all units have a spatial location on the board and a temporal location in one of the turns. As the game progresses and timelines are extended, we'll create copies of the unit in each turn it appears in.
-
-This is going to get complicated, and we're looking forward to implementing the [Diplomacy Adjudicator Test Cases](http://web.inter.nl.net/users/L.B.Kruijswijk/), so let's also create a test project:
-
-```
-5dplomacy:5dplomacy$ dotnet new nunit --name MultiversalDiplomacyTests --output MultiversalDiplomacyTests
-```
-
-I think dotnet will fetch NUnit when it needs it, but to get it into our environment so VS Code recognizes it, we add it to the nix shell:
-
-```
-packages = [ pkgs.dotnet-sdk pkgs.dotnetPackages.NUnit3 ];
-```
-
-After writing some basic tests, we can run them with:
-
-```
-5dplomacy:5dplomacy$ dotnet test MultiversalDiplomacyTests/
-[...]
-Starting test execution, please wait...
-A total of 1 test files matched the specified pattern.
-
-Passed!  - Failed:     0, Passed:     2, Skipped:     0, Total:     2, Duration: 29 ms - 5dplomacy/MultiversalDiplomacyTests/bin/Debug/net6.0/MultiversalDiplomacyTests.dll (net6.0)
-```
-
-Neat.
+The Great Powers of Europe can only wage multiversal wars because they are lead by extradimensional beings masquerading as human politicians. When a country is eliminated in one timeline, its extradimensional leader is executed, killing them in all timelines.
