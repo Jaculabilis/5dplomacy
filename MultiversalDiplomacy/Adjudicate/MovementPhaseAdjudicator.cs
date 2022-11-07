@@ -388,6 +388,26 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
         return updated;
     }
 
+    private bool LoggedUpdate(BinaryAdjudicationDecision decision, bool outcome, int depth, string message)
+    {
+        bool updated = decision.Update(outcome);
+        if (updated)
+        {
+            logger.Log(depth, "{0}: {1}", outcome, message);
+        }
+        return updated;
+    }
+
+    private bool LoggedUpdate(NumericAdjudicationDecision decision, int min, int max, int depth, string message)
+    {
+        bool updated = decision.Update(min, max);
+        if (updated)
+        {
+            logger.Log(depth, "{0}, {1}: {2}", min, max, message);
+        }
+        return updated;
+    }
+
     /// <summary>
     /// Attempt to resolve an adjudication decision.
     /// </summary>
@@ -435,7 +455,7 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
             // dislodged.
             if (move.Outcome == true)
             {
-                progress |= decision.Update(false);
+                progress |= LoggedUpdate(decision, false, depth, "Unit successfully moves");
                 return progress;
             }
 
@@ -458,7 +478,7 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
             // If at least one invader will move, this unit is dislodged.
             if (move.Outcome == true)
             {
-                progress |= decision.Update(true);
+                progress |= LoggedUpdate(decision, true, depth, "Invading unit successfully moves");
                 return progress;
             }
 
@@ -472,7 +492,7 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
 
         if (!potentialDislodger)
         {
-            progress |= decision.Update(false);
+            progress |= LoggedUpdate(decision, false, depth, "No invader can move");
         }
 
         return progress;
@@ -495,8 +515,8 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
             // Timeline adjacency
             && decision.Order.Unit.Season.InAdjacentTimeline(decision.Order.Season))
         {
-            progress |= decision.Update(true);
-            return progress;
+            bool update = LoggedUpdate(decision, true, depth, "Adjacent move");
+            return progress | update;
         }
 
         // If the origin and destination are not adjacent, then the decision resolves to whether
@@ -530,7 +550,7 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
             // to false.
             if (attack.MinValue > 0)
             {
-                progress |= decision.Update(false);
+                progress |= LoggedUpdate(decision, false, depth, "An attacker has nonzero attack strength");
                 return progress;
             }
 
@@ -547,7 +567,7 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
         progress |= ResolveDecision(dislodge, world, decisions, depth + 1);
         if (dislodge.Outcome == true)
         {
-            progress |= decision.Update(false);
+            progress |= LoggedUpdate(decision, false, depth, "Unit dislodged");
             return progress;
         }
 
@@ -555,7 +575,7 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
         // resolved to false, then the support is given.
         if (!potentialNonzeroAttack && dislodge.Outcome == false)
         {
-            progress |= decision.Update(true);
+            progress |= LoggedUpdate(decision, true, depth, "No successful attack or dislodge");
             return progress;
         }
 
@@ -575,7 +595,7 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
         // If no unit is in the province, the hold strength is zero.
         if (decision.Order == null)
         {
-            progress |= decision.Update(0, 0);
+            progress |= LoggedUpdate(decision, 0, 0, depth, "No unit in the province");
             return progress;
         }
 
@@ -584,9 +604,12 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
         {
             DoesMove moves = decisions.DoesMove[move];
             progress |= ResolveDecision(moves, world, decisions, depth + 1);
-            progress |= decision.Update(
-                moves.Outcome != false ? 0 : 1,
-                moves.Outcome == true ? 0 : 1);
+            progress |= LoggedUpdate(
+                decision,
+                min: moves.Outcome != false ? 0 : 1,
+                max: moves.Outcome == true ? 0 : 1,
+                depth,
+                "Updated based on unit's move success");
             return progress;
         }
         // If a unit without a move order is in the province, add up the supports.
@@ -601,7 +624,7 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
                 if (givesSupport.Outcome == true) min += 1;
                 if (givesSupport.Outcome != false) max += 1;
             }
-            progress |= decision.Update(min, max);
+            progress |= LoggedUpdate(decision, min, max, depth, "Updated based on unit's supports");
             return progress;
         }
     }
@@ -620,7 +643,7 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
         progress |= ResolveDecision(hasPath, world, decisions, depth + 1);
         if (hasPath.Outcome == false)
         {
-            progress |= decision.Update(0, 0);
+            progress |= LoggedUpdate(decision, 0, 0, depth, "No path");
             return progress;
         }
 
@@ -650,7 +673,7 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
             if (decision.Order.Unit.Power == destPower)
             {
                 // Cannot dislodge own unit.
-                progress |= decision.Update(0, 0);
+                progress |= LoggedUpdate(decision, 0, 0, depth, "Cannot dislodge own unit");
                 return progress;
             }
             else
@@ -666,7 +689,7 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
                     if (givesSupport.Outcome == true) min += 1;
                     if (givesSupport.Outcome != false) max += 1;
                 }
-                progress |= decision.Update(min, max);
+                progress |= LoggedUpdate(decision, min, max, depth, "Updated with supports from other powers");
                 return progress;
             }
         }
@@ -688,7 +711,7 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
             }
             // Force min to zero in case of an attempt to disloge a unit of the same power.
             if (decision.Order.Unit.Power == destPower) min = 0;
-            progress |= decision.Update(min, max);
+            progress |= LoggedUpdate(decision, min, max, depth, "Updated with supports");
             return progress;
         }
         else
@@ -704,7 +727,7 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
                 if (givesSupport.Outcome == true) min += 1;
                 if (givesSupport.Outcome != false) max += 1;
             }
-            progress |= decision.Update(min, max);
+            progress |= LoggedUpdate(decision, min, max, depth, "Updated with supports from all powers");
             return progress;
         }
     }
@@ -729,7 +752,7 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
             if (givesSupport.Outcome == true) min += 1;
             if (givesSupport.Outcome != false) max += 1;
         }
-        progress |= decision.Update(min, max);
+        progress |= LoggedUpdate(decision, min, max, depth, "Updated based on unit's supports");
 
         return progress;
     }
@@ -748,7 +771,7 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
         progress |= ResolveDecision(hasPath, world, decisions, depth + 1);
         if (hasPath.Outcome == false)
         {
-            progress |= decision.Update(0, 0);
+            progress |= LoggedUpdate(decision, 0, 0, depth, "No path to prevent");
             return progress;
         }
 
@@ -757,7 +780,7 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
         if (decision.OpposingMove != null
             && decisions.DoesMove[decision.OpposingMove].Outcome == true)
         {
-            progress |= decision.Update(0, 0);
+            progress |= LoggedUpdate(decision, 0, 0, depth, "Cannot prevent in lost head-to-head");
             return progress;
         }
 
@@ -783,7 +806,7 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
             min = 0;
         }
 
-        progress |= decision.Update(min, max);
+        progress |= LoggedUpdate(decision, min, max, depth, "Updated based on unit's supports");
 
         return progress;
     }
@@ -812,7 +835,7 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
         // If the attack doesn't beat the defense, resolve the move to false.
         if (attack.MaxValue <= defense.MinValue)
         {
-            progress |= decision.Update(false);
+            progress |= LoggedUpdate(decision, false, depth, "Attack can't beat defense");
             return progress;
         }
 
@@ -825,7 +848,7 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
             // If attack doesn't beat the prevent, resolve the move to false.
             if (attack.MaxValue <= prevent.MinValue)
             {
-                progress |= decision.Update(false);
+                progress |= LoggedUpdate(decision, false, depth, "Attack can't beat prevent");
                 return progress;
             }
             // If the attack doesn't beat the prevent, it can't resolve to true.
@@ -837,7 +860,11 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
 
         // If the attack didn't resolve to false because the defense or a prevent beat it, then
         // attempt to resolve it to true based on whether it beat the defense and all prevents.
-        progress |= decision.Update(attack.MinValue > defense.MaxValue && beatsAllCompetingMoves);
+        progress |= LoggedUpdate(
+            decision,
+            attack.MinValue > defense.MaxValue && beatsAllCompetingMoves,
+            depth,
+            "Updated based on competing moves");
         return progress;
     }
 }
