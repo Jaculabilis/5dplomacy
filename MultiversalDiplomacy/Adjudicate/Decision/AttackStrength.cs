@@ -8,6 +8,9 @@ public class AttackStrength : NumericAdjudicationDecision
     public List<SupportMoveOrder> Supports { get; }
     public MoveOrder? OpposingMove { get; }
 
+    public override string ToString()
+        => $"AttackStrength({Order})";
+
     public AttackStrength(MoveOrder order, IEnumerable<SupportMoveOrder> supports, MoveOrder? opposingMove = null)
     {
         this.Order = order;

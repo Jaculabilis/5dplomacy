@@ -8,6 +8,9 @@ public class PreventStrength : NumericAdjudicationDecision
     public List<SupportMoveOrder> Supports { get; }
     public MoveOrder? OpposingMove { get; }
 
+    public override string ToString()
+        => $"PreventStrength({Order})";
+
     public PreventStrength(MoveOrder order, IEnumerable<SupportMoveOrder> supports, MoveOrder? opposingMove = null)
     {
         this.Order = order;

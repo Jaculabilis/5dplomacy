@@ -8,6 +8,9 @@ public class DoesMove : BinaryAdjudicationDecision
     public MoveOrder? OpposingMove { get; }
     public List<MoveOrder> Competing { get; }
 
+    public override string ToString()
+        => $"DoesMove({Order})";
+
     public DoesMove(MoveOrder order, MoveOrder? opposingMove, IEnumerable<MoveOrder> competing)
     {
         this.Order = order;
