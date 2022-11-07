@@ -286,7 +286,7 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
             foreach (AdjudicationDecision decision in decisions.Values)
             {
                 // This will noop without progress if the decision is already resolved
-                progress |= ResolveDecision(decision, world, decisions);
+                progress |= ResolveDecision(decision, world, decisions, depth: 0);
             }
         } while (progress);
 
@@ -384,27 +384,37 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
         return updated;
     }
 
+    /// <summary>
+    /// Attempt to resolve an adjudication decision.
+    /// </summary>
+    /// <returns>
+    /// If any adjudication was further determined, returns true. If nothing was further determined, returns false.
+    /// </returns>
     private bool ResolveDecision(
         AdjudicationDecision decision,
         World world,
-        MovementDecisions decisions)
-        => decision.Resolved ? false : decision switch
+        MovementDecisions decisions,
+        int depth)
+    {
+        return decision.Resolved ? false : decision switch
         {
-            IsDislodged d => ResolveIsUnitDislodged(d, world, decisions),
-            HasPath d => ResolveDoesMoveHavePath(d, world, decisions),
-            GivesSupport d => ResolveIsSupportGiven(d, world, decisions),
-            HoldStrength d => ResolveHoldStrength(d, world, decisions),
-            AttackStrength d => ResolveAttackStrength(d, world, decisions),
-            DefendStrength d => ResolveDefendStrength(d, world, decisions),
-            PreventStrength d => ResolvePreventStrength(d, world, decisions),
-            DoesMove d => ResolveDoesUnitMove(d, world, decisions),
+            IsDislodged d => ResolveIsUnitDislodged(d, world, decisions, depth + 1),
+            HasPath d => ResolveDoesMoveHavePath(d, world, decisions, depth + 1),
+            GivesSupport d => ResolveIsSupportGiven(d, world, decisions, depth + 1),
+            HoldStrength d => ResolveHoldStrength(d, world, decisions, depth + 1),
+            AttackStrength d => ResolveAttackStrength(d, world, decisions, depth + 1),
+            DefendStrength d => ResolveDefendStrength(d, world, decisions, depth + 1),
+            PreventStrength d => ResolvePreventStrength(d, world, decisions, depth + 1),
+            DoesMove d => ResolveDoesUnitMove(d, world, decisions, depth + 1),
             _ => throw new NotSupportedException($"Unknown decision type: {decision.GetType()}")
         };
+    }
 
     private bool ResolveIsUnitDislodged(
         IsDislodged decision,
         World world,
-        MovementDecisions decisions)
+        MovementDecisions decisions,
+        int depth)
     {
         bool progress = false;
 
@@ -413,7 +423,7 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
         if (decision.Order is MoveOrder moveOrder)
         {
             DoesMove move = decisions.DoesMove[moveOrder];
-            progress |= ResolveDecision(move, world, decisions);
+            progress |= ResolveDecision(move, world, decisions, depth + 1);
 
             // If this unit received a move order and the move is successful, it cannot be
             // dislodged.
@@ -437,7 +447,7 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
         foreach (MoveOrder dislodger in decision.Incoming)
         {
             DoesMove move = decisions.DoesMove[dislodger];
-            progress |= ResolveDecision(move, world, decisions);
+            progress |= ResolveDecision(move, world, decisions, depth + 1);
 
             // If at least one invader will move, this unit is dislodged.
             if (move.Outcome == true)
@@ -465,7 +475,8 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
     private bool ResolveDoesMoveHavePath(
         HasPath decision,
         World world,
-        MovementDecisions decisions)
+        MovementDecisions decisions,
+        int depth)
     {
         bool progress= false;
 
@@ -494,7 +505,8 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
     private bool ResolveIsSupportGiven(
         GivesSupport decision,
         World world,
-        MovementDecisions decisions)
+        MovementDecisions decisions,
+        int depth)
     {
         bool progress = false;
 
@@ -504,7 +516,7 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
         foreach (MoveOrder cut in decision.Cuts)
         {
             AttackStrength attack = decisions.AttackStrength[cut];
-            progress |= ResolveDecision(attack, world, decisions);
+            progress |= ResolveDecision(attack, world, decisions, depth + 1);
 
             // If at least one attack has a nonzero minimum, the support decision can be resolved
             // to false.
@@ -524,7 +536,7 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
 
         // Support is also cut if the unit is dislodged.
         IsDislodged dislodge = decisions.IsDislodged[decision.Order.Unit];
-        progress |= ResolveDecision(dislodge, world, decisions);
+        progress |= ResolveDecision(dislodge, world, decisions, depth + 1);
         if (dislodge.Outcome == true)
         {
             progress |= decision.Update(false);
@@ -546,7 +558,8 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
     private bool ResolveHoldStrength(
         HoldStrength decision,
         World world,
-        MovementDecisions decisions)
+        MovementDecisions decisions,
+        int depth)
     {
         bool progress = false;
 
@@ -561,7 +574,7 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
         if (decision.Order is MoveOrder move)
         {
             DoesMove moves = decisions.DoesMove[move];
-            progress |= ResolveDecision(moves, world, decisions);
+            progress |= ResolveDecision(moves, world, decisions, depth + 1);
             progress |= decision.Update(
                 moves.Outcome != false ? 0 : 1,
                 moves.Outcome == true ? 0 : 1);
@@ -575,7 +588,7 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
             foreach (SupportHoldOrder support in decision.Supports)
             {
                 GivesSupport givesSupport = decisions.GivesSupport[support];
-                progress |= ResolveDecision(givesSupport, world, decisions);
+                progress |= ResolveDecision(givesSupport, world, decisions, depth + 1);
                 if (givesSupport.Outcome == true) min += 1;
                 if (givesSupport.Outcome != false) max += 1;
             }
@@ -587,13 +600,14 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
     private bool ResolveAttackStrength(
         AttackStrength decision,
         World world,
-        MovementDecisions decisions)
+        MovementDecisions decisions,
+        int depth)
     {
         bool progress = false;
 
         // If there is no path, the attack strength is zero.
         var hasPath = decisions.HasPath[decision.Order];
-        progress |= ResolveDecision(hasPath, world, decisions);
+        progress |= ResolveDecision(hasPath, world, decisions, depth + 1);
         if (hasPath.Outcome == false)
         {
             progress |= decision.Update(0, 0);
@@ -609,7 +623,7 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
             : null;
         if (destMoveAway != null)
         {
-            progress |= ResolveDecision(destMoveAway, world, decisions);
+            progress |= ResolveDecision(destMoveAway, world, decisions, depth + 1);
         }
         if (// In any case here, there will have to be a unit at the destination with an order,
             // which means that destOrder will have to be populated. Including this in the if
@@ -638,7 +652,7 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
                 {
                     if (support.Unit.Power == destPower) continue;
                     GivesSupport givesSupport = decisions.GivesSupport[support];
-                    progress |= ResolveDecision(givesSupport, world, decisions);
+                    progress |= ResolveDecision(givesSupport, world, decisions, depth + 1);
                     if (givesSupport.Outcome == true) min += 1;
                     if (givesSupport.Outcome != false) max += 1;
                 }
@@ -658,7 +672,7 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
             foreach (SupportMoveOrder support in decision.Supports)
             {
                 GivesSupport givesSupport = decisions.GivesSupport[support];
-                progress |= ResolveDecision(givesSupport, world, decisions);
+                progress |= ResolveDecision(givesSupport, world, decisions, depth + 1);
                 if (support.Unit.Power != destPower && givesSupport.Outcome == true) min += 1;
                 if (givesSupport.Outcome != false) max += 1;
             }
@@ -676,7 +690,7 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
             foreach (SupportMoveOrder support in decision.Supports)
             {
                 GivesSupport givesSupport = decisions.GivesSupport[support];
-                progress |= ResolveDecision(givesSupport, world, decisions);
+                progress |= ResolveDecision(givesSupport, world, decisions, depth + 1);
                 if (givesSupport.Outcome == true) min += 1;
                 if (givesSupport.Outcome != false) max += 1;
             }
@@ -688,7 +702,8 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
     private bool ResolveDefendStrength(
         DefendStrength decision,
         World world,
-        MovementDecisions decisions)
+        MovementDecisions decisions,
+        int depth)
     {
         bool progress = false;
 
@@ -699,7 +714,7 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
         foreach (SupportMoveOrder support in decision.Supports)
         {
             GivesSupport givesSupport = decisions.GivesSupport[support];
-            progress |= ResolveDecision(givesSupport, world, decisions);
+            progress |= ResolveDecision(givesSupport, world, decisions, depth + 1);
             if (givesSupport.Outcome == true) min += 1;
             if (givesSupport.Outcome != false) max += 1;
         }
@@ -711,13 +726,14 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
     private bool ResolvePreventStrength(
         PreventStrength decision,
         World world,
-        MovementDecisions decisions)
+        MovementDecisions decisions,
+        int depth)
     {
         bool progress = false;
 
         // If there is no path, the prevent strength is zero.
         var hasPath = decisions.HasPath[decision.Order];
-        progress |= ResolveDecision(hasPath, world, decisions);
+        progress |= ResolveDecision(hasPath, world, decisions, depth + 1);
         if (hasPath.Outcome == false)
         {
             progress |= decision.Update(0, 0);
@@ -741,7 +757,7 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
         foreach (SupportMoveOrder support in decision.Supports)
         {
             GivesSupport givesSupport = decisions.GivesSupport[support];
-            progress |= ResolveDecision(givesSupport, world, decisions);
+            progress |= ResolveDecision(givesSupport, world, decisions, depth + 1);
             if (givesSupport.Outcome == true) min += 1;
             if (givesSupport.Outcome != false) max += 1;
         }
@@ -763,13 +779,14 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
     private bool ResolveDoesUnitMove(
         DoesMove decision,
         World world,
-        MovementDecisions decisions)
+        MovementDecisions decisions,
+        int depth)
     {
         bool progress = false;
 
         // Resolve the move's attack strength.
         AttackStrength attack = decisions.AttackStrength[decision.Order];
-        progress |= ResolveDecision(attack, world, decisions);
+        progress |= ResolveDecision(attack, world, decisions, depth + 1);
 
         // In a head to head battle, the threshold for the attack strength to beat is the opposing
         // defend strength. Outside a head to head battle, the threshold is the destination's hold
@@ -777,7 +794,7 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
         NumericAdjudicationDecision defense = decision.OpposingMove != null
             ? decisions.DefendStrength[decision.OpposingMove]
             : decisions.HoldStrength[decision.Order.Point];
-        progress |= ResolveDecision(defense, world, decisions);
+        progress |= ResolveDecision(defense, world, decisions, depth + 1);
 
         // If the attack doesn't beat the defense, resolve the move to false.
         if (attack.MaxValue <= defense.MinValue)
@@ -791,7 +808,7 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
         foreach (MoveOrder order in decision.Competing)
         {
             PreventStrength prevent = decisions.PreventStrength[order];
-            progress |= ResolveDecision(prevent, world, decisions);
+            progress |= ResolveDecision(prevent, world, decisions, depth + 1);
             // If attack doesn't beat the prevent, resolve the move to false.
             if (attack.MaxValue <= prevent.MinValue)
             {
