@@ -275,18 +275,21 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
 
     public List<AdjudicationDecision> AdjudicateOrders(World world, List<Order> orders)
     {
+        logger.Log(0, "Beginning adjudication");
         // Define all adjudication decisions to be made.
         MovementDecisions decisions = new(world, orders);
 
         // Adjudicate all decisions.
         bool progress = false;
+        int loopNum = 1;
         do
         {
+            logger.Log(1, "Beginning loop {0}", loopNum++);
             progress = false;
             foreach (AdjudicationDecision decision in decisions.Values)
             {
                 // This will noop without progress if the decision is already resolved
-                progress |= ResolveDecision(decision, world, decisions, depth: 0);
+                progress |= ResolveDecision(decision, world, decisions, depth: 2);
             }
         } while (progress);
 
@@ -294,6 +297,7 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
         {
             throw new ApplicationException("Some orders not resolved!");
         }
+        logger.Log(0, "Completed adjudication");
 
         return decisions.Values.ToList();
     }
@@ -396,6 +400,7 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
         MovementDecisions decisions,
         int depth)
     {
+        logger.Log(depth, "ResolveDecision({0})", decision);
         return decision.Resolved ? false : decision switch
         {
             IsDislodged d => ResolveIsUnitDislodged(d, world, decisions, depth + 1),
@@ -416,6 +421,7 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
         MovementDecisions decisions,
         int depth)
     {
+        logger.Log(depth, "IsUnitDislodged({0})", decision.Order.Unit);
         bool progress = false;
 
         // If this unit was ordered to move and is doing so successfully, it cannot be dislodged
@@ -478,6 +484,7 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
         MovementDecisions decisions,
         int depth)
     {
+        logger.Log(depth, "DoesMoveHavePath({0})", decision.Order);
         bool progress= false;
 
         // If the origin and destination are adjacent, then there is a path.
@@ -508,6 +515,7 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
         MovementDecisions decisions,
         int depth)
     {
+        logger.Log(depth, "IsSupportGiven({0})", decision.Order);
         bool progress = false;
 
         // Support is cut when a unit moves into the supporting unit's province with nonzero
@@ -561,6 +569,7 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
         MovementDecisions decisions,
         int depth)
     {
+        logger.Log(depth, "HoldStrength({0})", decision.Province);
         bool progress = false;
 
         // If no unit is in the province, the hold strength is zero.
@@ -603,6 +612,7 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
         MovementDecisions decisions,
         int depth)
     {
+        logger.Log(depth, "AttackStrength({0})", decision.Order);
         bool progress = false;
 
         // If there is no path, the attack strength is zero.
@@ -705,6 +715,7 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
         MovementDecisions decisions,
         int depth)
     {
+        logger.Log(depth, "DefendStrength({0})", decision.Order);
         bool progress = false;
 
         // The defend strength is equal to one plus, at least, the number of known successful
@@ -729,6 +740,7 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
         MovementDecisions decisions,
         int depth)
     {
+        logger.Log(depth, "PreventStrength({0})", decision.Order);
         bool progress = false;
 
         // If there is no path, the prevent strength is zero.
@@ -782,6 +794,7 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
         MovementDecisions decisions,
         int depth)
     {
+        logger.Log(depth, "DoesUnitMove({0})", decision.Order);
         bool progress = false;
 
         // Resolve the move's attack strength.
