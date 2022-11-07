@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 
 using MultiversalDiplomacy.Adjudicate.Decision;
+using MultiversalDiplomacy.Adjudicate.Logging;
 using MultiversalDiplomacy.Model;
 using MultiversalDiplomacy.Orders;
 
@@ -11,7 +12,14 @@ namespace MultiversalDiplomacy.Adjudicate;
 /// </summary>
 public class MovementPhaseAdjudicator : IPhaseAdjudicator
 {
-    public static IPhaseAdjudicator Instance { get; } = new MovementPhaseAdjudicator();
+    public static IPhaseAdjudicator Instance { get; } = new MovementPhaseAdjudicator(ConsoleLogger.Instance);
+
+    private IAdjudicatorLogger logger { get; }
+
+    public MovementPhaseAdjudicator(IAdjudicatorLogger logger)
+    {
+        this.logger = logger;
+    }
 
     public List<OrderValidation> ValidateOrders(World world, List<Order> orders)
     {
