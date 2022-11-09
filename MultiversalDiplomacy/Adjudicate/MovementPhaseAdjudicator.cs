@@ -1,5 +1,3 @@
-using System.Collections.ObjectModel;
-
 using MultiversalDiplomacy.Adjudicate.Decision;
 using MultiversalDiplomacy.Adjudicate.Logging;
 using MultiversalDiplomacy.Model;
@@ -511,8 +509,6 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
             }
         }
 
-        // TODO needs to also resolve true if anyone moves into this timeline
-
         // Seasons not at the head of a timeline advance if the outcome of a battle is changed.
         // The outcome of a battle is changed if:
         // 1. The outcome of a dislodge decision is changed,
@@ -526,8 +522,9 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
             // TODO these aren't timeline-specific
             IsDislodged dislodged = decisions.IsDislodged[order.Unit];
             progress |= ResolveDecision(dislodged, world, decisions, depth + 1);
-            bool previous = history.IsDislodgedOutcomes[order.Unit];
-            if (dislodged.Resolved && dislodged.Outcome != previous)
+            if (history.IsDislodgedOutcomes.TryGetValue(order.Unit, out bool previous)
+                && dislodged.Resolved
+                && dislodged.Outcome != previous)
             {
                 progress |= LoggedUpdate(
                     decision,
@@ -542,7 +539,9 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
             {
                 DoesMove moves = decisions.DoesMove[moveOrder];
                 progress |= ResolveDecision(moves, world, decisions, depth + 1);
-                bool previousMove = history.DoesMoveOutcomes[moveOrder];
+                if (history.DoesMoveOutcomes.TryGetValue(moveOrder, out bool previousMove)
+                    && moves.Resolved
+                    && moves.Outcome != previousMove)
                 if (moves.Resolved && moves.Outcome != previousMove)
                 {
                     progress |= LoggedUpdate(
