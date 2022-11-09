@@ -288,7 +288,6 @@ public class TimeTravelTest
         // The attack on Mun 2:1 is repelled, but the support is cut.
         setup.ValidateOrders();
         Assert.That(tyr2_2, Is.Valid);
-        Assert.That(mun2_1, Is.Valid);
         setup.AdjudicateOrders();
         Assert.That(tyr2_2, Is.Repelled);
         Assert.That(mun2_1, Is.NotDislodged);
