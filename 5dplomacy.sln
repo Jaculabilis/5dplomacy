@@ -2,9 +2,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.30114.105
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MultiversalDiplomacy", "MultiversalDiplomacy\MultiversalDiplomacy.csproj", "{DD4C458A-EB75-4DFA-B06D-7F2BF8470460}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MultiversalDiplomacy", "MultiversalDiplomacy/MultiversalDiplomacy.csproj", "{DD4C458A-EB75-4DFA-B06D-7F2BF8470460}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MultiversalDiplomacyTests", "MultiversalDiplomacyTests\MultiversalDiplomacyTests.csproj", "{6DD39198-428C-4385-B870-A1BDED1E5F8A}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MultiversalDiplomacyTests", "MultiversalDiplomacyTests/MultiversalDiplomacyTests.csproj", "{6DD39198-428C-4385-B870-A1BDED1E5F8A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
