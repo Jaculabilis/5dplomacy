@@ -86,7 +86,10 @@ public class MovementDecisions
         }
 
         // Get the orders in the affected timelines.
-        List<UnitOrder> relevantOrders = AdvanceTimeline.Values.SelectMany(at => at.Orders).ToList();
+        List<UnitOrder> relevantOrders = AdvanceTimeline.Values
+            .SelectMany(at => at.Orders)
+            .Distinct()
+            .ToList();
 
         // Create a hold strength decision with an associated order for every province with a unit.
         foreach (UnitOrder order in relevantOrders)
