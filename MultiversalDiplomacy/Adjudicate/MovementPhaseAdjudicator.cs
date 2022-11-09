@@ -492,13 +492,12 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
             return progress;
         }
 
-        // The season target of a successful move always advances.
-        IEnumerable<MoveOrder> incomingMoveOrders = decision.Orders
+        // The season target of a new (i.e. not previously adjudicated) and successful move always advances.
+        IEnumerable<MoveOrder> newIncomingMoves = decision.Orders
             .OfType<MoveOrder>()
-            .Where(order => order.Season == decision.Season);
-        logger.Log(depth, "decision.Orders = {0}", string.Join(", ", decision.Orders));
-        logger.Log(depth, "incomingMoveOrders = {0}", string.Join(", ", incomingMoveOrders));
-        foreach (MoveOrder moveOrder in incomingMoveOrders)
+            .Where(order => order.Season == decision.Season
+                && !world.OrderHistory[order.Season].DoesMoveOutcomes.ContainsKey(order));
+        foreach (MoveOrder moveOrder in newIncomingMoves)
         {
             DoesMove doesMove = decisions.DoesMove[moveOrder];
             progress |= ResolveDecision(doesMove, world, decisions, depth + 1);
@@ -513,8 +512,7 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
         // The outcome of a battle is changed if:
         // 1. The outcome of a dislodge decision is changed,
         // 2. The outcome of an intra-timeline move decision is changed, or
-        // 3. The outcome of an inter-timeline move decision with that season as the destination is
-        //    changed.
+        // 3. The outcome of an inter-timeline move decision with that season as the destination is changed.
         OrderHistory history = world.OrderHistory[decision.Season];
         bool anyUnresolved = false;
         foreach (UnitOrder order in decision.Orders)
