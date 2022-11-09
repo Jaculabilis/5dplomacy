@@ -291,7 +291,7 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
                 // This will noop without progress if the decision is already resolved
                 progress |= ResolveDecision(decision, world, decisions, depth: 2);
             }
-        } while (progress);
+        } while (progress && decisions.Values.Any(decision => !decision.Resolved));
 
         if (decisions.Values.Any(d => !d.Resolved))
         {
@@ -304,9 +304,13 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
 
     public World UpdateWorld(World world, List<AdjudicationDecision> decisions)
     {
+        logger.Log(0, "Updating world");
         Dictionary<MoveOrder, DoesMove> moves = decisions
             .OfType<DoesMove>()
             .ToDictionary(dm => dm.Order);
+        Dictionary<Unit, IsDislodged> dislodges = decisions
+            .OfType<IsDislodged>()
+            .ToDictionary(dm => dm.Order.Unit);
 
         // All moves to a particular season in a single phase result in the same future. Keep a
         // record of when a future season has been created.
@@ -314,25 +318,37 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
         List<Unit> createdUnits = new();
         List<RetreatingUnit> retreats = new();
 
+        // Populate createdFutures with the timeline fork decisions
+        logger.Log(1, "Processing AdvanceTimeline decisions");
+        foreach (AdvanceTimeline advanceTimeline in decisions.OfType<AdvanceTimeline>())
+        {
+            logger.Log(2, "{0} = {1}", advanceTimeline, advanceTimeline.Outcome?.ToString() ?? "?");
+            if (advanceTimeline.Outcome == true)
+            {
+                // A timeline that doesn't have a future yet simply continues. Otherwise, it forks.
+                createdFutures[advanceTimeline.Season] = !advanceTimeline.Season.Futures.Any()
+                    ? advanceTimeline.Season.MakeNext()
+                    : advanceTimeline.Season.MakeFork();
+            }
+        }
+
         // Successful move orders result in the unit moving to the destination and creating a new
         // future, while unsuccessful move orders are processed the same way as non-move orders.
+        logger.Log(1, "Processing successful moves");
         foreach (DoesMove doesMove in moves.Values)
         {
-            if (doesMove.Outcome == true)
+            logger.Log(2, "{0} = {1}", doesMove, doesMove.Outcome?.ToString() ?? "?");
+            Season moveSeason = doesMove.Order.Season;
+            if (doesMove.Outcome == true && createdFutures.ContainsKey(moveSeason))
             {
-                if (!createdFutures.TryGetValue(doesMove.Order.Season, out Season? future))
-                {
-                    // A timeline that doesn't have a future yet simply continues. Otherwise, it forks.
-                    future = !doesMove.Order.Season.Futures.Any()
-                        ? doesMove.Order.Season.MakeNext()
-                        : doesMove.Order.Season.MakeFork();
-                    createdFutures[doesMove.Order.Season] = future;
-                }
-                createdUnits.Add(doesMove.Order.Unit.Next(doesMove.Order.Location, future));
+                Unit next = doesMove.Order.Unit.Next(doesMove.Order.Location, createdFutures[moveSeason]);
+                logger.Log(3, "Advancing unit to {0}", next);
+                createdUnits.Add(next);
             }
         }
 
         // Process unsuccessful moves, all holds, and all supports.
+        logger.Log(1, "Processing stationary orders");
         foreach (IsDislodged isDislodged in decisions.OfType<IsDislodged>())
         {
             UnitOrder order = isDislodged.Order;
@@ -343,22 +359,26 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
                 continue;
             }
 
-            if (!createdFutures.TryGetValue(order.Unit.Season, out Season? future))
+            logger.Log(2, "{0} = {1}", isDislodged, isDislodged.Outcome?.ToString() ?? "?");
+            if (!createdFutures.ContainsKey(order.Unit.Season))
             {
-                // Any unit given an order is, by definition, at the front of a timeline.
-                future = order.Unit.Season.MakeNext();
-                createdFutures[order.Unit.Season] = future;
+                logger.Log(3, "Skipping order because no future was created");
+                continue;
             }
 
-            // For each stationary unit that wasn't dislodged, continue it into the future.
+            Season future = createdFutures[order.Unit.Season];
             if (isDislodged.Outcome == false)
             {
-                createdUnits.Add(order.Unit.Next(order.Unit.Location, future));
+                // Non-dislodged units continue into the future.
+                Unit next = order.Unit.Next(order.Unit.Location, future);
+                logger.Log(3, "Advancing unit to {0}", next);
+                createdUnits.Add(next);
             }
             else
             {
                 // Create a retreat for each dislodged unit.
                 // TODO check valid retreats and disbands
+                logger.Log(3, "Creating retreat for {0}", order.Unit);
                 var validRetreats = order.Unit.Location.Adjacents
                     .Select(loc => (future, loc))
                     .ToList();
@@ -367,15 +387,35 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
             }
         }
 
-        // Sort the new orders by season to save for posterity in case of attacks from the future.
-        IEnumerable<KeyValuePair<Season, ReadOnlyCollection<Order>>> newOrders = decisions
-            .OfType<IsDislodged>()
-            .GroupBy(
-                keySelector: d => d.Order.Unit.Season,
-                elementSelector: d => d.Order as Order)
-            .Where(group => !world.GivenOrders.ContainsKey(group.Key))
-            .Select(group => new KeyValuePair<Season, ReadOnlyCollection<Order>>(
-                group.Key, new(group.ToList())));
+        // Record the adjudication results to the season's order history
+        Dictionary<Season, OrderHistory> newHistory = new();
+        foreach (UnitOrder unitOrder in decisions.OfType<IsDislodged>().Select(d => d.Order))
+        {
+            newHistory.Ensure(unitOrder.Unit.Season, () => new());
+            OrderHistory history = newHistory[unitOrder.Unit.Season];
+            // TODO does this add every order to every season??
+            history.Orders.Add(unitOrder);
+            history.IsDislodgedOutcomes[unitOrder.Unit] = dislodges[unitOrder.Unit].Outcome == true;
+            if (unitOrder is MoveOrder moveOrder)
+            {
+                history.DoesMoveOutcomes[moveOrder] = moves[moveOrder].Outcome == true;
+            }
+        }
+
+        // Log the new order history
+        foreach ((Season season, OrderHistory history) in newHistory)
+        {
+            string verb = world.OrderHistory.ContainsKey(season) ? "Updating" : "Adding";
+            logger.Log(1, "{0} history for {1}", verb, season);
+            foreach (UnitOrder order in history.Orders)
+            {
+                logger.Log(2, "{0}", order);
+            }
+        }
+
+        IEnumerable<KeyValuePair<Season, OrderHistory>> updatedHistory = world.OrderHistory
+            .Where(kvp => !newHistory.ContainsKey(kvp.Key))
+            .Concat(newHistory);
 
         // TODO provide more structured information about order outcomes
 
@@ -383,7 +423,9 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
             seasons: world.Seasons.Concat(createdFutures.Values),
             units: world.Units.Concat(createdUnits),
             retreats: retreats,
-            orders: world.GivenOrders.Concat(newOrders));
+            orders: updatedHistory);
+
+        logger.Log(0, "Completed update");
 
         return updated;
     }
@@ -423,6 +465,7 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
         logger.Log(depth, "ResolveDecision({0})", decision);
         return decision.Resolved ? false : decision switch
         {
+            AdvanceTimeline d => ResolveAdvanceTimeline(d, world, decisions, depth + 1),
             IsDislodged d => ResolveIsUnitDislodged(d, world, decisions, depth + 1),
             HasPath d => ResolveDoesMoveHavePath(d, world, decisions, depth + 1),
             GivesSupport d => ResolveIsSupportGiven(d, world, decisions, depth + 1),
@@ -433,6 +476,92 @@ public class MovementPhaseAdjudicator : IPhaseAdjudicator
             DoesMove d => ResolveDoesUnitMove(d, world, decisions, depth + 1),
             _ => throw new NotSupportedException($"Unknown decision type: {decision.GetType()}")
         };
+    }
+
+    private bool ResolveAdvanceTimeline(
+        AdvanceTimeline decision,
+        World world,
+        MovementDecisions decisions,
+        int depth)
+    {
+        logger.Log(depth, "AdvanceTimeline({0})", decision.Season);
+        bool progress = false;
+
+        // A season at the head of a timeline always advances.
+        if (!decision.Season.Futures.Any())
+        {
+            progress |= LoggedUpdate(decision, true, depth, "A timeline head always advances");
+            return progress;
+        }
+
+        // The season target of a successful move always advances.
+        IEnumerable<MoveOrder> incomingMoveOrders = decision.Orders
+            .OfType<MoveOrder>()
+            .Where(order => order.Season == decision.Season);
+        logger.Log(depth, "decision.Orders = {0}", string.Join(", ", decision.Orders));
+        logger.Log(depth, "incomingMoveOrders = {0}", string.Join(", ", incomingMoveOrders));
+        foreach (MoveOrder moveOrder in incomingMoveOrders)
+        {
+            DoesMove doesMove = decisions.DoesMove[moveOrder];
+            progress |= ResolveDecision(doesMove, world, decisions, depth + 1);
+            if (doesMove.Outcome == true)
+            {
+                progress |= LoggedUpdate(decision, true, depth, $"Advanced by {doesMove.Order}");
+                return progress;
+            }
+        }
+
+        // TODO needs to also resolve true if anyone moves into this timeline
+
+        // Seasons not at the head of a timeline advance if the outcome of a battle is changed.
+        // The outcome of a battle is changed if:
+        // 1. The outcome of a dislodge decision is changed,
+        // 2. The outcome of an intra-timeline move decision is changed, or
+        // 3. The outcome of an inter-timeline move decision with that season as the destination is
+        //    changed.
+        OrderHistory history = world.OrderHistory[decision.Season];
+        bool anyUnresolved = false;
+        foreach (UnitOrder order in decision.Orders)
+        {
+            // TODO these aren't timeline-specific
+            IsDislodged dislodged = decisions.IsDislodged[order.Unit];
+            progress |= ResolveDecision(dislodged, world, decisions, depth + 1);
+            bool previous = history.IsDislodgedOutcomes[order.Unit];
+            if (dislodged.Resolved && dislodged.Outcome != previous)
+            {
+                progress |= LoggedUpdate(
+                    decision,
+                    true,
+                    depth,
+                    $"History changed for {order.Unit}: dislodge {previous} => {dislodged.Outcome}");
+                return progress;
+            }
+            anyUnresolved |= !dislodged.Resolved;
+
+            if (order is MoveOrder moveOrder)
+            {
+                DoesMove moves = decisions.DoesMove[moveOrder];
+                progress |= ResolveDecision(moves, world, decisions, depth + 1);
+                bool previousMove = history.DoesMoveOutcomes[moveOrder];
+                if (moves.Resolved && moves.Outcome != previousMove)
+                {
+                    progress |= LoggedUpdate(
+                        decision,
+                        true,
+                        depth,
+                        $"History changed for {order}: moves {previousMove} => {moves.Outcome}");
+                    return progress;
+                }
+                anyUnresolved |= !moves.Resolved;
+            }
+        }
+
+        if (!anyUnresolved)
+        {
+            progress |= LoggedUpdate(decision, false, depth, "No resolved changes to history");
+        }
+
+        return progress;
     }
 
     private bool ResolveIsUnitDislodged(

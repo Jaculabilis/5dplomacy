@@ -8,6 +8,9 @@ public class AdvanceTimeline : BinaryAdjudicationDecision
     public Season Season { get; }
     public List<UnitOrder> Orders { get; }
 
+    public override string ToString()
+        => $"AdvanceTimeline({Season})";
+
     public AdvanceTimeline(Season season, IEnumerable<UnitOrder> orders)
     {
         this.Season = season;

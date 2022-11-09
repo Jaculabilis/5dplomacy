@@ -71,7 +71,7 @@ public class Season
 
     public override string ToString()
     {
-        return $"{this.Turn}:{this.Timeline}";
+        return $"{this.Timeline}@{this.Turn}";
     }
 
     /// <summary>

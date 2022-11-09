@@ -42,7 +42,7 @@ public class World
     /// <summary>
     /// Orders given to units in each season.
     /// </summary>
-    public ReadOnlyDictionary<Season, ReadOnlyCollection<Order>> GivenOrders { get; }
+    public ReadOnlyDictionary<Season, OrderHistory> OrderHistory { get; }
 
     /// <summary>
     /// Immutable game options.
@@ -59,7 +59,7 @@ public class World
         Season rootSeason,
         ReadOnlyCollection<Unit> units,
         ReadOnlyCollection<RetreatingUnit> retreatingUnits,
-        ReadOnlyDictionary<Season, ReadOnlyCollection<Order>> givenOrders,
+        ReadOnlyDictionary<Season, OrderHistory> orderHistory,
         Options options)
     {
         this.Provinces = provinces;
@@ -68,7 +68,7 @@ public class World
         this.RootSeason = rootSeason;
         this.Units = units;
         this.RetreatingUnits = retreatingUnits;
-        this.GivenOrders = givenOrders;
+        this.OrderHistory = orderHistory;
         this.Options = options;
     }
 
@@ -82,7 +82,7 @@ public class World
         ReadOnlyCollection<Season>? seasons = null,
         ReadOnlyCollection<Unit>? units = null,
         ReadOnlyCollection<RetreatingUnit>? retreatingUnits = null,
-        ReadOnlyDictionary<Season, ReadOnlyCollection<Order>>? givenOrders = null,
+        ReadOnlyDictionary<Season, OrderHistory>? orderHistory = null,
         Options? options = null)
         : this(
             provinces ?? previous.Provinces,
@@ -91,7 +91,7 @@ public class World
             previous.RootSeason,  // Can't change the root season
             units ?? previous.Units,
             retreatingUnits ?? previous.RetreatingUnits,
-            givenOrders ?? previous.GivenOrders,
+            orderHistory ?? previous.OrderHistory,
             options ?? previous.Options)
     {
     }
@@ -109,7 +109,7 @@ public class World
             root,
             new(new List<Unit>()),
             new(new List<RetreatingUnit>()),
-            new(new Dictionary<Season, ReadOnlyCollection<Order>>()),
+            new(new Dictionary<Season, OrderHistory>()),
             new Options());
     }
 
@@ -123,7 +123,7 @@ public class World
         IEnumerable<Season>? seasons = null,
         IEnumerable<Unit>? units = null,
         IEnumerable<RetreatingUnit>? retreats = null,
-        IEnumerable<KeyValuePair<Season, ReadOnlyCollection<Order>>>? orders = null)
+        IEnumerable<KeyValuePair<Season, OrderHistory>>? orders = null)
         => new World(
             previous: this,
             seasons: seasons == null
@@ -135,8 +135,8 @@ public class World
             retreatingUnits: retreats == null
                 ? this.RetreatingUnits
                 : new(retreats.ToList()),
-            givenOrders: orders == null
-                ? this.GivenOrders
+            orderHistory: orders == null
+                ? this.OrderHistory
                 : new(orders.ToDictionary(kvp => kvp.Key, kvp => kvp.Value)));
 
     /// <summary>

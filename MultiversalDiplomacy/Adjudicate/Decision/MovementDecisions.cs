@@ -16,139 +16,139 @@ public class MovementDecisions
     public Dictionary<Season, AdvanceTimeline> AdvanceTimeline { get; }
 
     public IEnumerable<AdjudicationDecision> Values =>
-        this.IsDislodged.Values.Cast<AdjudicationDecision>()
-        .Concat(this.HasPath.Values)
-        .Concat(this.GivesSupport.Values)
-        .Concat(this.HoldStrength.Values)
-        .Concat(this.AttackStrength.Values)
-        .Concat(this.DefendStrength.Values)
-        .Concat(this.PreventStrength.Values)
-        .Concat(this.DoesMove.Values)
-        .Concat(this.AdvanceTimeline.Values);
+        IsDislodged.Values.Cast<AdjudicationDecision>()
+        .Concat(HasPath.Values)
+        .Concat(GivesSupport.Values)
+        .Concat(HoldStrength.Values)
+        .Concat(AttackStrength.Values)
+        .Concat(DefendStrength.Values)
+        .Concat(PreventStrength.Values)
+        .Concat(DoesMove.Values)
+        .Concat(AdvanceTimeline.Values);
 
     public MovementDecisions(World world, List<Order> orders)
     {
-        this.IsDislodged = new();
-        this.HasPath = new();
-        this.GivesSupport = new();
-        this.HoldStrength = new();
-        this.AttackStrength = new();
-        this.DefendStrength = new();
-        this.PreventStrength = new();
-        this.DoesMove = new();
-        this.AdvanceTimeline = new();
+        IsDislodged = new();
+        HasPath = new();
+        GivesSupport = new();
+        HoldStrength = new();
+        AttackStrength = new();
+        DefendStrength = new();
+        PreventStrength = new();
+        DoesMove = new();
+        AdvanceTimeline = new();
 
-        // Record which seasons are referenced by the order set.
-        HashSet<Season> orderedSeasons = new();
-        foreach (UnitOrder order in orders.Cast<UnitOrder>())
+        // The orders argument only contains the submitted orders. The adjudicator will need to adjudicate not only
+        // presently submitted orders, but also previously submitted orders if present orders affect the past. This
+        // necessitates doing some lookups to find all affected seasons.
+
+        // At a minimum, the submitted orders imply a dislodge decision for each unit, which affects every season those
+        // orders were given to.
+        var submittedOrdersBySeason = orders.Cast<UnitOrder>().ToLookup(order => order.Unit.Season);
+        foreach (var group in submittedOrdersBySeason)
         {
-            _ = orderedSeasons.Add(order.Unit.Season);
+            AdvanceTimeline[group.Key] = new(group.Key, group);
         }
 
-        // Expand the order list to include any other seasons that are potentially affected.
-        // In the event that those seasons don't end up affected (all moves to it fail, all
-        // supports to it are cut), it is still safe to re-adjudicate everything because
-        // adjudication is deterministic and doesn't produce side effects.
-        HashSet<Season> affectedSeasons = new();
+        // Create timeline decisions for each season potentially affected by the submitted orders.
+        // Since adjudication is deterministic and pure, if none of the affecting orders succeed,
+        // the adjudication decisions for the extra seasons will resolve the same way and the
+        // advance decision for the timeline will resolve false.
         foreach (Order order in orders)
         {
             switch (order)
             {
                 case MoveOrder move:
-                    if (!orderedSeasons.Contains(move.Season))
-                    {
-                        affectedSeasons.Add(move.Season);
-                    }
+                    AdvanceTimeline.Ensure(
+                        move.Season,
+                        () => new(move.Season, world.OrderHistory[move.Season].Orders));
+                    AdvanceTimeline[move.Season].Orders.Add(move);
                     break;
 
                 case SupportHoldOrder supportHold:
-                    if (!orderedSeasons.Contains(supportHold.Target.Season))
-                    {
-                        affectedSeasons.Add(supportHold.Target.Season);
-                    }
+                    AdvanceTimeline.Ensure(
+                        supportHold.Target.Season,
+                        () => new(supportHold.Target.Season, world.OrderHistory[supportHold.Target.Season].Orders));
+                    AdvanceTimeline[supportHold.Target.Season].Orders.Add(supportHold);
                     break;
 
                 case SupportMoveOrder supportMove:
-                    if (!orderedSeasons.Contains(supportMove.Target.Season))
-                    {
-                        affectedSeasons.Add(supportMove.Target.Season);
-                    }
+                    AdvanceTimeline.Ensure(
+                        supportMove.Target.Season,
+                        () => new(supportMove.Target.Season, world.OrderHistory[supportMove.Target.Season].Orders));
+                    AdvanceTimeline[supportMove.Target.Season].Orders.Add(supportMove);
+                    AdvanceTimeline.Ensure(
+                        supportMove.Season,
+                        () => new(supportMove.Season, world.OrderHistory[supportMove.Season].Orders));
+                    AdvanceTimeline[supportMove.Season].Orders.Add(supportMove);
                     break;
             }
         }
-        foreach (Season season in affectedSeasons)
+
+        // Get the orders in the affected timelines.
+        List<UnitOrder> relevantOrders = AdvanceTimeline.Values.SelectMany(at => at.Orders).ToList();
+
+        // Create a hold strength decision with an associated order for every province with a unit.
+        foreach (UnitOrder order in relevantOrders)
         {
-            orders.AddRange(world.GivenOrders[season]);
+            HoldStrength[order.Unit.Point] = new(order.Unit.Point, order);
         }
 
-        // Create the relevant decisions for each order.
-        foreach (UnitOrder order in orders.Cast<UnitOrder>())
+        // Create all other relevant decisions for each order in the affected timelines.
+        foreach (UnitOrder order in relevantOrders)
         {
             // Create a dislodge decision for this unit.
-            List<MoveOrder> incoming = orders
+            List<MoveOrder> incoming = relevantOrders
                 .OfType<MoveOrder>()
                 .Where(order.IsIncoming)
                 .ToList();
-            this.IsDislodged[order.Unit] = new(order, incoming);
-
-            // Ensure a hold strength decision exists. Overwrite any previous once, since it may
-            // have been created without an order by a previous move or support.
-            this.HoldStrength[order.Unit.Point] = new(order.Unit.Point, order);
+            IsDislodged[order.Unit] = new(order, incoming);
 
             if (order is MoveOrder move)
             {
                 // Find supports corresponding to this move.
-                List<SupportMoveOrder> supports = orders
+                List<SupportMoveOrder> supports = relevantOrders
                     .OfType<SupportMoveOrder>()
                     .Where(support => support.IsSupportFor(move))
                     .ToList();
 
                 // Determine if this move is a head-to-head battle.
-                MoveOrder? opposingMove = orders
+                MoveOrder? opposingMove = relevantOrders
                     .OfType<MoveOrder>()
-                    .FirstOrDefault(other => other != null && other.IsOpposing(move), null);
+                    .FirstOrDefault(other => other!.IsOpposing(move), null);
 
                 // Find competing moves.
-                List<MoveOrder> competing = orders
+                List<MoveOrder> competing = relevantOrders
                     .OfType<MoveOrder>()
                     .Where(move.IsCompeting)
                     .ToList();
 
                 // Create the move-related decisions.
-                this.HasPath[move] = new(move);
-                this.AttackStrength[move] = new(move, supports, opposingMove);
-                this.DefendStrength[move] = new(move, supports);
-                this.PreventStrength[move] = new(move, supports, opposingMove);
-                this.DoesMove[move] = new(move, opposingMove, competing);
+                HasPath[move] = new(move);
+                AttackStrength[move] = new(move, supports, opposingMove);
+                DefendStrength[move] = new(move, supports);
+                PreventStrength[move] = new(move, supports, opposingMove);
+                DoesMove[move] = new(move, opposingMove, competing);
 
                 // Ensure a hold strength decision exists for the destination.
-                if (!this.HoldStrength.ContainsKey(move.Point))
-                {
-                    this.HoldStrength[move.Point] = new(move.Point);
-                }
+                HoldStrength.Ensure(move.Point, () => new(move.Point));
             }
             else if (order is SupportOrder support)
             {
                 // Create the support decision.
-                this.GivesSupport[support] = new(support, incoming);
+                GivesSupport[support] = new(support, incoming);
 
                 // Ensure a hold strength decision exists for the target's province.
-                if (!this.HoldStrength.ContainsKey(support.Target.Point))
-                {
-                    this.HoldStrength[support.Target.Point] = new(support.Target.Point);
-                }
+                HoldStrength.Ensure(support.Target.Point, () => new(support.Target.Point));
 
                 if (support is SupportHoldOrder supportHold)
                 {
-                    this.HoldStrength[support.Target.Point].Supports.Add(supportHold);
+                    HoldStrength[support.Target.Point].Supports.Add(supportHold);
                 }
                 else if (support is SupportMoveOrder supportMove)
                 {
                     // Ensure a hold strength decision exists for the target's destination.
-                    if (!this.HoldStrength.ContainsKey(supportMove.Point))
-                    {
-                        this.HoldStrength[supportMove.Point] = new(supportMove.Point);
-                    }
+                    HoldStrength.Ensure(supportMove.Point, () => new(supportMove.Point));
                 }
             }
         }
