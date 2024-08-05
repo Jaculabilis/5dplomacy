@@ -27,3 +27,7 @@ Since there are many ways to create new timelines, the game would rapidly expand
 ### Victory conditions
 
 The Great Powers of Europe can only wage multiversal wars because they are lead by extradimensional beings masquerading as human politicians. When a country is eliminated in one timeline, its extradimensional leader is executed, killing them in all timelines.
+
+## License
+
+GNU General Public License v3.0 or later ([LICENSE](./LICENSE))
