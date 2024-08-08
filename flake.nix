@@ -10,6 +10,8 @@
       in rec {
         devShell = pkgs.mkShell {
           DOTNET_CLI_TELEMETRY_OPTOUT = 1;
+          NIX_LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath [ pkgs.stdenv.cc.cc ];
+          NIX_LD = builtins.readFile "${pkgs.stdenv.cc}/nix-support/dynamic-linker";
           packages = [
             pkgs.bashInteractive
             pkgs.dotnet-sdk_8

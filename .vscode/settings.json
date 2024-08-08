@@ -2,7 +2,7 @@
     "terminal.integrated.profiles.linux": {
         "nix develop": {
             "path": "nix",
-            "args": ["develop"]
+            "args": ["develop", "--impure"]
         }
     },
     "terminal.integrated.profiles.windows": {
