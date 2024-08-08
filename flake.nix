@@ -9,7 +9,11 @@
       in rec {
         devShell = pkgs.mkShell {
           DOTNET_CLI_TELEMETRY_OPTOUT = 1;
-          packages = [ pkgs.dotnet-sdk pkgs.dotnetPackages.NUnit3 ];
+          packages = [
+            pkgs.bashInteractive
+            pkgs.dotnet-sdk
+            pkgs.dotnetPackages.NUnit3
+          ];
         };
       }
     );
