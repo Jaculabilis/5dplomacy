@@ -12,7 +12,7 @@
           DOTNET_CLI_TELEMETRY_OPTOUT = 1;
           packages = [
             pkgs.bashInteractive
-            pkgs.dotnet-sdk
+            pkgs.dotnet-sdk_8
             pkgs.dotnetPackages.NUnit3
           ];
         };
